@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { useAuth } from '../hooks/useAuth'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
-import BackButton from '../components/ui/BackButton'
-import Logo from '../components/ui/Logo'
+import DashboardHeader from '../components/layouts/DashboardHeader'
 
 function VacunacionesContent() {
   const router = useRouter()
@@ -82,15 +81,14 @@ function VacunacionesContent() {
   }
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat relative" style={{ backgroundImage: 'url(/images/fondo_verde.jpg)' }}>
+    <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat relative animate-pageEnter" style={{ backgroundImage: 'url(/images/fondo_verde.jpg)' }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       
-      <BackButton href="/dashboard" />
+      <DashboardHeader />
       
-      <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10">
+      <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10 animate-contentFadeIn">
         <div className="bg-white rounded-lg shadow-2xl p-8">
           <div className="flex flex-col items-center mb-6">
-            <Logo />
             <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">Cownect</h1>
             <h2 className="text-2xl font-bold text-black mb-4">Gestión de Vacunaciones</h2>
           </div>
@@ -140,9 +138,11 @@ function VacunacionesContent() {
                     type="date"
                     value={formData.fecha_aplicacion}
                     onChange={(e) => setFormData({ ...formData, fecha_aplicacion: e.target.value })}
+                    max={new Date().toISOString().split('T')[0]}
                     className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
                     required
                   />
+                  <p className="mt-1 text-sm text-gray-600">No se pueden registrar fechas futuras</p>
                 </div>
                 <div>
                   <label className="block text-base font-bold text-black mb-2">Próxima Dosis</label>
@@ -150,8 +150,10 @@ function VacunacionesContent() {
                     type="date"
                     value={formData.proxima_dosis}
                     onChange={(e) => setFormData({ ...formData, proxima_dosis: e.target.value })}
+                    min={formData.fecha_aplicacion || new Date().toISOString().split('T')[0]}
                     className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
                   />
+                  <p className="mt-1 text-sm text-gray-600">Debe ser posterior a la fecha de aplicación</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-base font-bold text-black mb-2">Observaciones</label>

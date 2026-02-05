@@ -5,7 +5,7 @@ import {
   sendEmailVerification,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { getFirebaseAuth, getFirebaseDb } from '../config/firebase'
+import { getFirebaseAuth, getFirebaseDb, getLanguageCodeByCountry } from '../config/firebase'
 import { AuthRepository, RegisterData, LoginData } from '@/domain/repositories/AuthRepository'
 import { User } from '@/domain/entities/User'
 
@@ -14,7 +14,12 @@ const USUARIOS_COLLECTION = 'usuarios'
 export class FirebaseAuthRepository implements AuthRepository {
   async register(data: RegisterData): Promise<{ user: User | null; error: string | null }> {
     try {
-      const auth = getFirebaseAuth()
+      // Determinar idioma según el país
+      const languageCode = data.rancho_pais 
+        ? getLanguageCodeByCountry(data.rancho_pais)
+        : 'es' // Por defecto español
+      
+      const auth = getFirebaseAuth(languageCode)
       const db = getFirebaseDb()
 
       const { user: firebaseUser } = await createUserWithEmailAndPassword(
@@ -41,7 +46,12 @@ export class FirebaseAuthRepository implements AuthRepository {
 
       await setDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid), profile)
 
-      await sendEmailVerification(firebaseUser)
+      // Asegurar que el idioma esté configurado antes de enviar el correo
+      auth.languageCode = languageCode
+      await sendEmailVerification(firebaseUser, {
+        url: typeof window !== 'undefined' ? `${window.location.origin}/login?registered=verify` : undefined,
+        handleCodeInApp: false,
+      })
 
       const user: User = {
         id: firebaseUser.uid,

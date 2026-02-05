@@ -22,7 +22,7 @@ export default function StarRating({ promedio, total = 0, editable = false, valu
             onClick={() => onChange?.(i)}
             className="focus:outline-none transition-transform hover:scale-110 text-xl"
           >
-            <span className={i <= mostrar ? 'text-amber-400' : 'text-gray-300'}>
+            <span className={i <= mostrar ? 'text-cownect-green' : 'text-gray-300'}>
               {i <= mostrar ? '★' : '☆'}
             </span>
           </button>
@@ -36,7 +36,7 @@ export default function StarRating({ promedio, total = 0, editable = false, valu
       {estrellas.map((i) => (
         <span
           key={i}
-          className={`text-lg ${i <= Math.round(promedio) ? 'text-amber-400' : 'text-gray-300'}`}
+          className={`text-lg ${i <= Math.round(promedio) ? 'text-cownect-green' : 'text-gray-300'}`}
         >
           {i <= Math.round(promedio) ? '★' : '☆'}
         </span>

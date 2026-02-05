@@ -11,6 +11,7 @@ export interface User {
   rancho_direccion?: string
   rancho_descripcion?: string
   moneda?: string
+  foto_perfil?: string // URL de la imagen de perfil
   created_at?: string
   updated_at?: string
 }

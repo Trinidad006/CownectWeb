@@ -43,7 +43,11 @@ export const firestoreService = {
     const snapshot = await getDocs(q)
     const list = snapshot.docs
       .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((a: any) => !a.vendido_a)
+      .filter((a: any) => 
+        !a.vendido_a && 
+        a.estado_venta !== 'vendido' && 
+        a.estado_venta !== 'proceso_venta'
+      )
     list.sort((a: any, b: any) => (b.created_at || '').localeCompare(a.created_at || ''))
     return list
   },
@@ -75,25 +79,149 @@ export const firestoreService = {
     const snap = await getDoc(animalRef)
     if (!snap.exists()) throw new Error('Animal no encontrado')
     const data = snap.data()
-    if (data.vendido_a) throw new Error('Este animal ya fue vendido')
+    if (data.vendido_a || data.estado_venta === 'vendido') throw new Error('Este animal ya fue vendido')
+    if (data.estado_venta === 'proceso_venta') throw new Error('Este animal ya está en proceso de venta')
     const vendedorId = data.usuario_id
     if (vendedorId === compradorId) throw new Error('No puedes comprar tu propio animal')
 
+    // Verificar si ya existe una compra en proceso
+    const comprasQuery = query(
+      collection(db, COMPRAS),
+      where('animal_id', '==', animalId),
+      where('comprador_id', '==', compradorId),
+      where('estado', '==', 'en_proceso')
+    )
+    const comprasSnap = await getDocs(comprasQuery)
+    if (!comprasSnap.empty) {
+      throw new Error('Ya tienes una compra en proceso para este animal')
+    }
+
+    const now = new Date().toISOString()
     const batch = writeBatch(db)
-    batch.update(animalRef, {
-      usuario_id: compradorId,
-      vendido_a: compradorId,
-      en_venta: false,
-      updated_at: new Date().toISOString(),
-    })
+    
+    // Crear la compra
     const compraRef = doc(collection(db, COMPRAS))
     batch.set(compraRef, {
       animal_id: animalId,
       comprador_id: compradorId,
       vendedor_id: vendedorId,
       precio: data.precio_venta,
-      created_at: new Date().toISOString(),
+      estado: 'en_proceso',
+      fecha_compra: now,
+      created_at: now,
+      updated_at: now,
     })
+    
+    // Actualizar estado del animal a "proceso_venta"
+    batch.update(animalRef, {
+      estado_venta: 'proceso_venta',
+      updated_at: now,
+    })
+    
+    await batch.commit()
+  },
+
+  async getComprasEnProceso(compradorId: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, COMPRAS),
+      where('comprador_id', '==', compradorId),
+      where('estado', '==', 'en_proceso')
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+
+  async getVentasEnProceso(vendedorId: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, COMPRAS),
+      where('vendedor_id', '==', vendedorId),
+      where('estado', '==', 'en_proceso')
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+
+  async getComprasCompletadas(compradorId: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, COMPRAS),
+      where('comprador_id', '==', compradorId),
+      where('estado', '==', 'completada')
+    )
+    const snapshot = await getDocs(q)
+    const compras = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+    
+    // Obtener información del animal y vendedor para cada compra
+    const comprasConDetalles = await Promise.all(
+      compras.map(async (compra: any) => {
+        const animalSnap = await getDoc(doc(db, ANIMALES, compra.animal_id))
+        const animal = animalSnap.exists() ? { id: animalSnap.id, ...animalSnap.data() } : null
+        
+        const vendedor = animal ? await firestoreService.getUsuario(compra.vendedor_id) : null
+        const calif = vendedor ? await firestoreService.getCalificacionPromedio(compra.vendedor_id) : { promedio: 0, total: 0 }
+        
+        return {
+          ...compra,
+          animal,
+          vendedor: vendedor ? { ...vendedor, calificacion: calif } : null,
+        }
+      })
+    )
+    
+    return comprasConDetalles
+  },
+
+  async completarCompra(compraId: string) {
+    const db = getFirebaseDb()
+    const compraRef = doc(db, COMPRAS, compraId)
+    const compraSnap = await getDoc(compraRef)
+    if (!compraSnap.exists()) throw new Error('Compra no encontrada')
+    const compraData = compraSnap.data()
+
+    const batch = writeBatch(db)
+    batch.update(compraRef, {
+      estado: 'completada',
+      fecha_completada: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    
+    const animalRef = doc(db, ANIMALES, compraData.animal_id)
+    batch.update(animalRef, {
+      usuario_id: compraData.comprador_id,
+      vendido_a: compraData.comprador_id,
+      en_venta: false,
+      estado_venta: 'vendido',
+      updated_at: new Date().toISOString(),
+    })
+    
+    await batch.commit()
+  },
+
+  async cancelarCompra(compraId: string) {
+    const db = getFirebaseDb()
+    const compraRef = doc(db, COMPRAS, compraId)
+    const compraSnap = await getDoc(compraRef)
+    if (!compraSnap.exists()) throw new Error('Compra no encontrada')
+    const compraData = compraSnap.data()
+
+    const batch = writeBatch(db)
+    const now = new Date().toISOString()
+    
+    batch.update(compraRef, {
+      estado: 'cancelada',
+      fecha_cancelada: now,
+      updated_at: now,
+    })
+    
+    // Volver el animal a estado "en_venta" si estaba en proceso
+    const animalRef = doc(db, ANIMALES, compraData.animal_id)
+    batch.update(animalRef, {
+      estado_venta: 'en_venta',
+      updated_at: now,
+    })
+    
     await batch.commit()
   },
 
@@ -110,10 +238,19 @@ export const firestoreService = {
 
   async getVendedoresComprados(compradorId: string): Promise<Set<string>> {
     const db = getFirebaseDb()
-    const q = query(collection(db, COMPRAS), where('comprador_id', '==', compradorId))
+    const q = query(
+      collection(db, COMPRAS), 
+      where('comprador_id', '==', compradorId),
+      where('estado', '==', 'completada')
+    )
     const snapshot = await getDocs(q)
     const vendedores = new Set<string>()
-    snapshot.docs.forEach((d) => vendedores.add(d.data().vendedor_id))
+    snapshot.docs.forEach((d) => {
+      const data = d.data()
+      if (data.vendedor_id) {
+        vendedores.add(data.vendedor_id)
+      }
+    })
     return vendedores
   },
 
@@ -133,6 +270,12 @@ export const firestoreService = {
   async getUsuario(uid: string) {
     const db = getFirebaseDb()
     const snap = await getDoc(doc(db, USUARIOS, uid))
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null
+  },
+
+  async getAnimal(animalId: string) {
+    const db = getFirebaseDb()
+    const snap = await getDoc(doc(db, ANIMALES, animalId))
     return snap.exists() ? { id: snap.id, ...snap.data() } : null
   },
 
@@ -199,6 +342,18 @@ export const firestoreService = {
       })
     )
     return withAnimal
+  },
+
+  async getPesosByAnimal(animalId: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, PESOS),
+      where('animal_id', '==', animalId)
+    )
+    const snapshot = await getDocs(q)
+    const pesos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+    pesos.sort((a: any, b: any) => (b.fecha_registro || '').localeCompare(a.fecha_registro || ''))
+    return pesos
   },
 
   async addPeso(data: {

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
-import { getFirebaseAuth, getFirebaseDb } from '@/infrastructure/config/firebase'
+import { getFirebaseAuth, getFirebaseDb, getLanguageCodeByCountry } from '@/infrastructure/config/firebase'
 import { PAISES_MONEDAS, getMonedaByPais } from '@/utils/paisesMonedas'
 import Input from '../ui/Input'
 import Select from '../ui/Select'
@@ -52,7 +52,12 @@ export default function RegisterForm() {
     setLoading(true)
 
     try {
-      const auth = getFirebaseAuth()
+      // Determinar idioma según el país seleccionado
+      const languageCode = formData.rancho_pais 
+        ? getLanguageCodeByCountry(formData.rancho_pais)
+        : 'es' // Por defecto español si no hay país
+      
+      const auth = getFirebaseAuth(languageCode)
       const db = getFirebaseDb()
 
       const { user: firebaseUser } = await createUserWithEmailAndPassword(
@@ -77,7 +82,12 @@ export default function RegisterForm() {
         updated_at: new Date().toISOString(),
       })
 
-      await sendEmailVerification(firebaseUser)
+      // Asegurar que el idioma esté configurado antes de enviar el correo
+      auth.languageCode = languageCode
+      await sendEmailVerification(firebaseUser, {
+        url: `${window.location.origin}/login?registered=verify`,
+        handleCodeInApp: false,
+      })
 
       router.push('/login?registered=verify')
     } catch (err: any) {

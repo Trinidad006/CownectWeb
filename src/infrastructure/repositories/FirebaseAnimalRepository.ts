@@ -12,6 +12,7 @@ import {
 import { getFirebaseDb } from '../config/firebase'
 import { AnimalRepository } from '@/domain/repositories/AnimalRepository'
 import { Animal } from '@/domain/entities/Animal'
+import { AnimalValidator } from '@/domain/validators/AnimalValidator'
 
 const ANIMALES_COLLECTION = 'animales'
 
@@ -28,6 +29,15 @@ function toAnimal(id: string, data: any): Animal {
     estado: data.estado,
     en_venta: data.en_venta ?? false,
     precio_venta: data.precio_venta,
+    estado_venta: data.estado_venta || (data.en_venta ? 'en_venta' : undefined),
+    documento_guia_transito: data.documento_guia_transito,
+    documento_factura_venta: data.documento_factura_venta,
+    documento_certificado_movilizacion: data.documento_certificado_movilizacion,
+    documento_certificado_zoosanitario: data.documento_certificado_zoosanitario,
+    documento_patente_fierro: data.documento_patente_fierro,
+    documentos_completos: data.documentos_completos ?? false,
+    foto: data.foto,
+    madre_id: data.madre_id,
     created_at: data.created_at,
     updated_at: data.updated_at,
   }
@@ -114,9 +124,17 @@ export class FirebaseAnimalRepository implements AnimalRepository {
     if (!snap.exists() || snap.data()?.usuario_id !== userId) {
       throw new Error('No autorizado o animal no encontrado')
     }
+    
+    const animal = toAnimal(snap.id, snap.data())
+    const validacion = AnimalValidator.puedePonerseEnVenta(animal)
+    if (!validacion.valido) {
+      throw new Error(validacion.error)
+    }
+    
     await updateDoc(ref, {
       en_venta: true,
       precio_venta: price,
+      estado_venta: 'en_venta',
       vistas: 0,
       updated_at: new Date().toISOString(),
     })

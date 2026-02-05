@@ -1,15 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { Animal } from '@/domain/entities/Animal'
 import { useAuth } from '../hooks/useAuth'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
-import BackButton from '../components/ui/BackButton'
-import Logo from '../components/ui/Logo'
+import DashboardHeader from '../components/layouts/DashboardHeader'
 import StarRating from '../components/ui/StarRating'
 import { PAISES_MONEDAS, formatPrecio, getMonedaByPais } from '@/utils/paisesMonedas'
+import { AnimalValidator } from '@/domain/validators/AnimalValidator'
 import Select from '../components/ui/Select'
 
 function MarketplaceContent() {
@@ -43,6 +43,19 @@ function MarketplaceContent() {
   const [reportMotivo, setReportMotivo] = useState('')
   const [reportDetalles, setReportDetalles] = useState('')
   const [reportSaving, setReportSaving] = useState(false)
+  const [showAnimalDetailModal, setShowAnimalDetailModal] = useState(false)
+  const [selectedAnimalDetail, setSelectedAnimalDetail] = useState<any>(null)
+  const [animalPesos, setAnimalPesos] = useState<any[]>([])
+  const [animalVacunaciones, setAnimalVacunaciones] = useState<any[]>([])
+  const [loadingAnimalDetail, setLoadingAnimalDetail] = useState(false)
+  const [comprasCompletadas, setComprasCompletadas] = useState<any[]>([])
+  const [calificacionesRealizadas, setCalificacionesRealizadas] = useState<Map<string, boolean>>(new Map())
+  const [busquedaAnimales, setBusquedaAnimales] = useState('')
+  const [showCompraExitosoModal, setShowCompraExitosoModal] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   const REPORTE_MOTIVOS = [
     { value: 'fraude', label: 'Fraude o estafa' },
@@ -66,6 +79,7 @@ function MarketplaceContent() {
       loadVendedoresComprados()
       loadMisVentas()
       loadMyAnimales()
+      loadComprasCompletadas()
     }
   }, [user?.id])
 
@@ -110,10 +124,34 @@ function MarketplaceContent() {
     if (!user?.id) return
     try {
       const data = await firestoreService.getAnimalesByUser(user.id)
-      const notForSale = (data as any[]).filter((a: any) => !a.en_venta)
+      // Filtrar animales que no estén en venta y que no estén vendidos
+      const notForSale = (data as any[]).filter((a: any) => !a.en_venta && a.estado_venta !== 'vendido')
       setMyAnimales(notForSale)
     } catch (error) {
       console.error('Error:', error)
+    }
+  }
+
+  const loadComprasCompletadas = async () => {
+    if (!user?.id) return
+    try {
+      const compras = await firestoreService.getComprasCompletadas(user.id)
+      console.log('Compras completadas cargadas:', compras)
+      setComprasCompletadas(compras)
+      
+      // Verificar qué vendedores ya fueron calificados
+      const calificacionesMap = new Map<string, boolean>()
+      await Promise.all(
+        compras.map(async (compra: any) => {
+          if (compra.vendedor?.id) {
+            const yaCalificado = await firestoreService.getMiCalificacion(compra.vendedor.id, user.id)
+            calificacionesMap.set(compra.vendedor.id, yaCalificado !== null)
+          }
+        })
+      )
+      setCalificacionesRealizadas(calificacionesMap)
+    } catch (error) {
+      console.error('Error cargando compras completadas:', error)
     }
   }
 
@@ -141,6 +179,11 @@ function MarketplaceContent() {
       setRanchoData({ rancho: '', rancho_hectareas: '', rancho_pais: '', rancho_ciudad: '', rancho_direccion: '', rancho_descripcion: '' })
     }
   }, [showMarkForSale, user])
+
+  // Usar el validador del dominio
+  const verificarDocumentosCompletos = (animal: Animal): boolean => {
+    return AnimalValidator.validarDocumentosCompletos(animal)
+  }
 
   const handleMarkForSale = async () => {
     if (!selectedAnimal?.id || !price || !user?.id) {
@@ -194,14 +237,14 @@ function MarketplaceContent() {
     setPurchaseSaving(true)
     try {
       await firestoreService.comprarAnimal(animalToBuy.id, user.id)
-      setVendedoresComprados((prev) => new Set([...prev, animalToBuy.usuario_id]))
       setShowPurchaseModal(false)
       setAnimalToBuy(null)
       loadAnimalesForSale()
       loadMisVentas()
-      alert('¡Compra simulada exitosa! Ya puedes calificar al vendedor.')
+      setShowCompraExitosoModal(true)
     } catch (error: any) {
-      alert('Error: ' + error.message)
+      setErrorMessage('Error: ' + error.message)
+      setShowErrorModal(true)
     } finally {
       setPurchaseSaving(false)
     }
@@ -217,7 +260,8 @@ function MarketplaceContent() {
 
   const confirmarReporte = async () => {
     if (!userToReport?.id || !user?.id || !reportMotivo.trim()) {
-      alert('Selecciona un motivo para el reporte')
+      setErrorMessage('Selecciona un motivo para el reporte')
+      setShowErrorModal(true)
       return
     }
     setReportSaving(true)
@@ -227,24 +271,31 @@ function MarketplaceContent() {
       setUserToReport(null)
       setReportMotivo('')
       setReportDetalles('')
-      alert('Reporte enviado correctamente. Gracias por ayudar a mantener la comunidad.')
+      setSuccessMessage('Reporte enviado correctamente. Gracias por ayudar a mantener la comunidad.')
+      setShowSuccessModal(true)
     } catch (error: any) {
-      alert('Error al enviar el reporte: ' + error.message)
+      setErrorMessage('Error al enviar el reporte: ' + error.message)
+      setShowErrorModal(true)
     } finally {
       setReportSaving(false)
     }
   }
 
-  const handleCalificar = (animal: any) => {
-    if (!user?.id || animal.usuario_id === user.id) return
-    setSelectedVendedor({ id: animal.usuario_id, nombre: animal.usuario?.nombre, apellido: animal.usuario?.apellido, rancho: animal.usuario?.rancho })
+  const handleCalificar = (animalOrCompra: any) => {
+    if (!user?.id) return
+    const vendedorId = animalOrCompra.usuario_id || animalOrCompra.vendedor?.id
+    if (vendedorId === user.id) return
+    
+    const vendedor = animalOrCompra.usuario || animalOrCompra.vendedor
+    setSelectedVendedor({ id: vendedorId, nombre: vendedor?.nombre, apellido: vendedor?.apellido, rancho: vendedor?.rancho })
     setRatingStars(0)
     setShowRatingModal(true)
   }
 
   const handleGuardarCalificacion = async () => {
     if (!selectedVendedor?.id || !user?.id || ratingStars < 1 || ratingStars > 5) {
-      alert('Selecciona entre 1 y 5 estrellas')
+      setErrorMessage('Selecciona entre 1 y 5 estrellas')
+      setShowErrorModal(true)
       return
     }
     setRatingSaving(true)
@@ -253,12 +304,74 @@ function MarketplaceContent() {
       setShowRatingModal(false)
       setSelectedVendedor(null)
       loadAnimalesForSale()
+      loadComprasCompletadas()
+      loadVendedoresComprados()
+      setSuccessMessage('Calificación guardada exitosamente')
+      setShowSuccessModal(true)
     } catch (error: any) {
-      alert('Error al calificar: ' + error.message)
+      setErrorMessage('Error al calificar: ' + error.message)
+      setShowErrorModal(true)
     } finally {
       setRatingSaving(false)
     }
   }
+
+  const handleVerDetalleAnimal = async (animal: any) => {
+    setSelectedAnimalDetail(animal)
+    setShowAnimalDetailModal(true)
+    setLoadingAnimalDetail(true)
+    setAnimalPesos([])
+    setAnimalVacunaciones([])
+    
+    try {
+      // Cargar historial de pesos y vacunaciones del animal
+      const [pesos, vacunaciones] = await Promise.all([
+        firestoreService.getPesosByAnimal(animal.id).catch(() => []),
+        firestoreService.getVacunacionesByAnimal(animal.id).catch(() => []),
+      ])
+      
+      setAnimalPesos(Array.isArray(pesos) ? pesos : [])
+      setAnimalVacunaciones(Array.isArray(vacunaciones) ? vacunaciones : [])
+    } catch (error) {
+      console.error('Error cargando detalles:', error)
+      setAnimalPesos([])
+      setAnimalVacunaciones([])
+    } finally {
+      setLoadingAnimalDetail(false)
+    }
+  }
+
+  // Filtrar animales según búsqueda con useMemo para optimizar
+  const animalesFiltrados = useMemo(() => {
+    if (!busquedaAnimales.trim()) {
+      return animales
+    }
+    
+    const busquedaLower = busquedaAnimales.toLowerCase().trim()
+    return animales.filter((animal: any) => {
+      const nombre = (animal.nombre || '').toLowerCase()
+      const especie = (animal.especie || '').toLowerCase()
+      const raza = (animal.raza || '').toLowerCase()
+      const numeroId = (animal.numero_identificacion || '').toLowerCase()
+      const rancho = (animal.usuario?.rancho || '').toLowerCase()
+      const ciudad = (animal.usuario?.rancho_ciudad || '').toLowerCase()
+      const pais = (PAISES_MONEDAS.find(p => p.codigo === animal.usuario?.rancho_pais)?.nombre || '').toLowerCase()
+      const vendedor = `${animal.usuario?.nombre || ''} ${animal.usuario?.apellido || ''}`.toLowerCase()
+      const precio = (animal.precio_venta?.toString() || '').toLowerCase()
+      
+      return (
+        nombre.includes(busquedaLower) ||
+        especie.includes(busquedaLower) ||
+        raza.includes(busquedaLower) ||
+        numeroId.includes(busquedaLower) ||
+        rancho.includes(busquedaLower) ||
+        ciudad.includes(busquedaLower) ||
+        pais.includes(busquedaLower) ||
+        vendedor.includes(busquedaLower) ||
+        precio.includes(busquedaLower)
+      )
+    })
+  }, [animales, busquedaAnimales])
 
   if (loading) {
     return (
@@ -270,15 +383,14 @@ function MarketplaceContent() {
   }
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat relative" style={{ backgroundImage: 'url(/images/fondo_verde.jpg)' }}>
+    <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat relative animate-pageEnter" style={{ backgroundImage: 'url(/images/fondo_verde.jpg)' }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       
-      <BackButton href="/dashboard" />
+      <DashboardHeader />
       
-      <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10">
+      <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10 animate-contentFadeIn">
         <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
           <div className="flex flex-col items-center mb-6">
-            <Logo />
             <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">Cownect</h1>
             <h2 className="text-2xl font-bold text-black mb-4">Marketplace Ganadero</h2>
           </div>
@@ -293,9 +405,33 @@ function MarketplaceContent() {
                   <h4 className="text-xl font-bold text-black mb-2">{animal.nombre || 'Sin nombre'}</h4>
                   <p className="text-gray-700 mb-1"><strong>Especie:</strong> {animal.especie || 'N/A'}</p>
                   <p className="text-gray-700 mb-1"><strong>Raza:</strong> {animal.raza || 'N/A'}</p>
+                  
+                  {/* Indicador de documentos */}
+                  {verificarDocumentosCompletos(animal) ? (
+                    <div className="mb-2 bg-green-50 border border-green-400 rounded-lg px-3 py-2">
+                      <p className="text-green-700 font-semibold text-sm">
+                        Documentos Listos
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mb-2 bg-green-50 border border-green-400 rounded-lg px-3 py-2">
+                      <p className="text-green-700 font-semibold text-sm">
+                        Documentación en Proceso
+                      </p>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => {
                       setSelectedAnimal(animal)
+                      setRanchoData({
+                        rancho: user?.rancho || '',
+                        rancho_hectareas: user?.rancho_hectareas?.toString() || '',
+                        rancho_pais: user?.rancho_pais || '',
+                        rancho_ciudad: user?.rancho_ciudad || '',
+                        rancho_direccion: user?.rancho_direccion || '',
+                        rancho_descripcion: user?.rancho_descripcion || '',
+                      })
                       setShowMarkForSale(true)
                     }}
                     className="w-full mt-4 bg-cownect-green text-white py-2 rounded-lg font-bold hover:bg-opacity-90 transition-all"
@@ -311,6 +447,50 @@ function MarketplaceContent() {
         </div>
 
         <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+          <h3 className="text-2xl font-bold text-black mb-4">Historial de Compras</h3>
+          <p className="text-gray-600 mb-4">Animales que has comprado y puedes calificar al vendedor</p>
+          {comprasCompletadas.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {comprasCompletadas.map((compra: any) => (
+                <div key={compra.id} className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
+                  {compra.animal && (
+                    <>
+                      <h4 className="text-xl font-bold text-black mb-2">{compra.animal.nombre || 'Sin nombre'}</h4>
+                      <p className="text-gray-700 mb-1"><strong>Especie:</strong> {compra.animal.especie || 'N/A'}</p>
+                      <p className="text-gray-700 mb-1"><strong>Raza:</strong> {compra.animal.raza || 'N/A'}</p>
+                      <p className="text-2xl font-bold text-cownect-green mb-2">
+                        {formatPrecio(compra.precio ?? 0, compra.vendedor?.rancho_pais)}
+                      </p>
+                      {compra.vendedor && (
+                        <div className="mt-4 pt-4 border-t border-gray-300">
+                          <p className="text-gray-700 mb-1"><strong>Vendedor:</strong> {compra.vendedor.nombre} {compra.vendedor.apellido}</p>
+                          <div className="mb-2">
+                            <StarRating promedio={compra.vendedor.calificacion?.promedio ?? 0} total={compra.vendedor.calificacion?.total ?? 0} />
+                          </div>
+                          {!calificacionesRealizadas.get(compra.vendedor.id) && (
+                            <button
+                              onClick={() => handleCalificar({ usuario_id: compra.vendedor.id, usuario: compra.vendedor })}
+                              className="w-full mt-2 bg-cownect-green text-white py-2 rounded-lg font-bold hover:bg-opacity-90 transition-all"
+                            >
+                              Calificar Vendedor
+                            </button>
+                          )}
+                          {calificacionesRealizadas.get(compra.vendedor.id) && (
+                            <p className="text-sm text-gray-600 mt-2 text-center">Ya calificaste a este vendedor</p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-700 text-lg">No has completado ninguna compra aún</p>
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
           <h3 className="text-2xl font-bold text-black mb-4">Mis ventas en curso</h3>
           <p className="text-gray-600 mb-4">Lo que tienes publicado en venta y cuántas personas lo han visto</p>
           {misVentas.length > 0 ? (
@@ -322,7 +502,7 @@ function MarketplaceContent() {
                   <p className="text-gray-700 mb-1"><strong>Raza:</strong> {animal.raza || 'N/A'}</p>
                   <p className="text-2xl font-bold text-cownect-green mb-2">{formatPrecio(animal.precio_venta ?? 0, user?.rancho_pais)}</p>
                   <p className="text-gray-700 font-semibold">
-                    <span className="text-amber-600">👁 {animal.vistas ?? 0}</span> {animal.vistas === 1 ? 'persona lo ha visto' : 'personas lo han visto'}
+                    <span className="text-cownect-green">👁 {animal.vistas ?? 0}</span> {animal.vistas === 1 ? 'persona lo ha visto' : 'personas lo han visto'}
                   </p>
                 </div>
               ))}
@@ -334,14 +514,99 @@ function MarketplaceContent() {
 
         <div className="bg-white rounded-lg shadow-2xl p-8">
           <h3 className="text-2xl font-bold text-black mb-4">Animales en Venta</h3>
-          {animales.length > 0 ? (
+          
+          {/* Buscador */}
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder="Buscar por nombre, especie, raza, ubicación, vendedor..."
+              value={busquedaAnimales}
+              onChange={(e) => setBusquedaAnimales(e.target.value)}
+              className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green transition-all"
+            />
+          </div>
+          
+          {animalesFiltrados.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {animales.map((animal: any) => (
-                <div key={animal.id} className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
+              {animalesFiltrados.map((animal: any) => (
+                <div 
+                  key={animal.id} 
+                  className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200 cursor-pointer hover:shadow-lg transition-all"
+                  onClick={() => handleVerDetalleAnimal(animal)}
+                >
+                  {animal.foto && (
+                    <div className="relative w-full h-48 mb-3 rounded-lg overflow-hidden">
+                      <Image
+                        src={animal.foto}
+                        alt={animal.nombre || 'Animal'}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
                   <h4 className="text-xl font-bold text-black mb-2">{animal.nombre || 'Sin nombre'}</h4>
                   <p className="text-gray-700 mb-1"><strong>Especie:</strong> {animal.especie || 'N/A'}</p>
                   <p className="text-gray-700 mb-1"><strong>Raza:</strong> {animal.raza || 'N/A'}</p>
                   <p className="text-gray-700 mb-1"><strong>Sexo:</strong> {animal.sexo === 'M' ? 'Macho' : 'Hembra'}</p>
+                  
+                  {/* Etiqueta de Estado/Etapa Productiva (excluyendo Vaca Seca, Vaca Ordeña, Muerto y Robado) */}
+                  {animal.estado && 
+                   animal.estado !== 'Vaca Seca' && 
+                   animal.estado !== 'Vaca Ordeña' && 
+                   animal.estado !== 'Muerto' && 
+                   animal.estado !== 'Robado' && (
+                    <div className="mb-2">
+                      <div className={`inline-block rounded-lg px-3 py-1.5 border-2 ${
+                        animal.estado === 'Cría' || animal.estado === 'Becerro' || animal.estado === 'Becerra'
+                          ? 'bg-blue-50 border-blue-400'
+                          : animal.estado === 'Destetado' || animal.estado === 'Novillo'
+                          ? 'bg-purple-50 border-purple-400'
+                          : animal.estado === 'Toro de Engorda' || animal.estado === 'Toro Reproductor'
+                          ? 'bg-orange-50 border-orange-400'
+                          : animal.estado === 'Activo'
+                          ? 'bg-gray-50 border-gray-400'
+                          : animal.estado === 'Muerto'
+                          ? 'bg-red-50 border-red-400'
+                          : animal.estado === 'Robado'
+                          ? 'bg-red-100 border-red-500'
+                          : 'bg-gray-50 border-gray-400'
+                      }`}>
+                        <p className={`font-bold text-sm ${
+                          animal.estado === 'Cría' || animal.estado === 'Becerro' || animal.estado === 'Becerra'
+                            ? 'text-blue-700'
+                            : animal.estado === 'Destetado' || animal.estado === 'Novillo'
+                            ? 'text-purple-700'
+                            : animal.estado === 'Toro de Engorda' || animal.estado === 'Toro Reproductor'
+                            ? 'text-orange-700'
+                            : animal.estado === 'Activo'
+                            ? 'text-gray-700'
+                            : animal.estado === 'Muerto'
+                            ? 'text-red-700'
+                            : animal.estado === 'Robado'
+                            ? 'text-red-800'
+                            : 'text-gray-700'
+                        }`}>
+                          {animal.estado}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Indicador de documentos */}
+                  {verificarDocumentosCompletos(animal) ? (
+                    <div className="mb-2 bg-green-50 border border-green-400 rounded-lg px-3 py-2">
+                      <p className="text-green-700 font-semibold text-sm">
+                        Documentos Listos
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mb-2 bg-green-50 border border-green-400 rounded-lg px-3 py-2">
+                      <p className="text-green-700 font-semibold text-sm">
+                        Documentación en Proceso
+                      </p>
+                    </div>
+                  )}
+                  
                   <p className="text-2xl font-bold text-cownect-green mb-2">
                     {formatPrecio(animal.precio_venta ?? 0, animal.usuario?.rancho_pais)}
                   </p>
@@ -363,21 +628,30 @@ function MarketplaceContent() {
                       {user?.id && animal.usuario_id !== user.id && (
                         <div className="flex flex-col gap-2">
                           <button
-                            onClick={() => handleComprar(animal)}
-                            className="w-full bg-amber-600 text-white py-2 rounded-lg font-bold hover:bg-amber-700 transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleComprar(animal)
+                            }}
+                            className="w-full bg-cownect-green text-white py-2 rounded-lg font-bold hover:bg-cownect-dark-green transition-all"
                           >
                             Compra
                           </button>
                           {vendedoresComprados.has(animal.usuario_id) && (
                             <button
-                              onClick={() => handleCalificar(animal)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleCalificar(animal)
+                              }}
                               className="text-sm text-cownect-green font-bold hover:underline"
                             >
                               Calificar vendedor
                             </button>
                           )}
                           <button
-                            onClick={() => handleReportar(animal)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleReportar(animal)
+                            }}
                             className="text-sm text-red-600 font-bold hover:underline text-left"
                           >
                             Reportar usuario
@@ -389,8 +663,12 @@ function MarketplaceContent() {
                 </div>
               ))}
             </div>
+          ) : busquedaAnimales.trim() ? (
+            <p className="text-gray-700 text-lg text-center py-8">
+              No se encontraron animales que coincidan con "{busquedaAnimales}"
+            </p>
           ) : (
-            <p className="text-gray-700 text-lg">No hay animales en venta en este momento</p>
+            <p className="text-gray-700 text-lg text-center py-8">No hay animales en venta disponibles</p>
           )}
         </div>
 
@@ -399,9 +677,9 @@ function MarketplaceContent() {
             <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
               <h3 className="text-2xl font-bold text-black mb-2">Compra</h3>
               <p className="text-gray-700 mb-4">
-                ¿Confirmar compra simulada de <strong>{animalToBuy.nombre}</strong> por {formatPrecio(animalToBuy.precio_venta ?? 0, animalToBuy.usuario?.rancho_pais)}?
+                ¿Iniciar proceso de compra de <strong>{animalToBuy.nombre}</strong> por {formatPrecio(animalToBuy.precio_venta ?? 0, animalToBuy.usuario?.rancho_pais)}?
               </p>
-              <p className="text-sm text-gray-600 mb-4">Esta es una compra de prueba. No se realizan transacciones reales. Podrás calificar al vendedor después.</p>
+              <p className="text-sm text-gray-600 mb-4">La compra quedará en proceso. Podrás completarla o cancelarla desde tu dashboard.</p>
               <div className="flex gap-4">
                 <button
                   onClick={confirmarCompra}
@@ -575,6 +853,293 @@ function MarketplaceContent() {
                   className="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold text-lg hover:bg-gray-500 transition-all"
                 >
                   Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Detalle del Animal */}
+        {showAnimalDetailModal && selectedAnimalDetail && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-white rounded-lg shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-black">Información del Animal</h3>
+                <button
+                  onClick={() => {
+                    setShowAnimalDetailModal(false)
+                    setSelectedAnimalDetail(null)
+                    setAnimalPesos([])
+                    setAnimalVacunaciones([])
+                  }}
+                  className="text-gray-500 hover:text-black text-3xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+
+              {loadingAnimalDetail ? (
+                <p className="text-center text-gray-600">Cargando información...</p>
+              ) : (
+                <>
+                  {/* Datos del Animal */}
+                  <div className="mb-6">
+                    <h4 className="text-xl font-bold text-black mb-4">Datos del Animal</h4>
+                    {selectedAnimalDetail.foto && (
+                      <div className="mb-4 flex justify-center">
+                        <div className="relative w-full max-w-md h-64 rounded-lg overflow-hidden border-2 border-gray-200">
+                          <Image
+                            src={selectedAnimalDetail.foto}
+                            alt={selectedAnimalDetail.nombre || 'Animal'}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-gray-700 mb-1"><strong>Nombre:</strong> {selectedAnimalDetail.nombre || 'N/A'}</p>
+                        <p className="text-gray-700 mb-1"><strong>Número de Identificación:</strong> {selectedAnimalDetail.numero_identificacion || 'N/A'}</p>
+                        <p className="text-gray-700 mb-1"><strong>Especie:</strong> {selectedAnimalDetail.especie || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-700 mb-1"><strong>Raza:</strong> {selectedAnimalDetail.raza || 'N/A'}</p>
+                        <p className="text-gray-700 mb-1"><strong>Sexo:</strong> {selectedAnimalDetail.sexo === 'M' ? 'Macho' : 'Hembra'}</p>
+                        
+                        {/* Etiqueta de Estado/Etapa Productiva (excluyendo Vaca Seca, Vaca Ordeña, Muerto y Robado) */}
+                        {selectedAnimalDetail.estado && 
+                         selectedAnimalDetail.estado !== 'Vaca Seca' && 
+                         selectedAnimalDetail.estado !== 'Vaca Ordeña' && 
+                         selectedAnimalDetail.estado !== 'Muerto' && 
+                         selectedAnimalDetail.estado !== 'Robado' && (
+                          <div className="mb-3">
+                            <p className="text-xs text-gray-600 mb-1">Estado / Etapa Productiva</p>
+                            <div className={`inline-block rounded-lg px-3 py-1.5 border-2 ${
+                              selectedAnimalDetail.estado === 'Cría' || selectedAnimalDetail.estado === 'Becerro' || selectedAnimalDetail.estado === 'Becerra'
+                                ? 'bg-blue-50 border-blue-400'
+                                : selectedAnimalDetail.estado === 'Destetado' || selectedAnimalDetail.estado === 'Novillo'
+                                ? 'bg-purple-50 border-purple-400'
+                                : selectedAnimalDetail.estado === 'Toro de Engorda' || selectedAnimalDetail.estado === 'Toro Reproductor'
+                                ? 'bg-orange-50 border-orange-400'
+                                : selectedAnimalDetail.estado === 'Activo'
+                                ? 'bg-gray-50 border-gray-400'
+                                : selectedAnimalDetail.estado === 'Muerto'
+                                ? 'bg-red-50 border-red-400'
+                                : selectedAnimalDetail.estado === 'Robado'
+                                ? 'bg-red-100 border-red-500'
+                                : 'bg-gray-50 border-gray-400'
+                            }`}>
+                              <p className={`font-bold text-sm ${
+                                selectedAnimalDetail.estado === 'Cría' || selectedAnimalDetail.estado === 'Becerro' || selectedAnimalDetail.estado === 'Becerra'
+                                  ? 'text-blue-700'
+                                  : selectedAnimalDetail.estado === 'Destetado' || selectedAnimalDetail.estado === 'Novillo'
+                                  ? 'text-purple-700'
+                                  : selectedAnimalDetail.estado === 'Toro de Engorda' || selectedAnimalDetail.estado === 'Toro Reproductor'
+                                  ? 'text-orange-700'
+                                  : selectedAnimalDetail.estado === 'Activo'
+                                  ? 'text-gray-700'
+                                  : selectedAnimalDetail.estado === 'Muerto'
+                                  ? 'text-red-700'
+                                  : selectedAnimalDetail.estado === 'Robado'
+                                  ? 'text-red-800'
+                                  : 'text-gray-700'
+                              }`}>
+                                {selectedAnimalDetail.estado}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {selectedAnimalDetail.fecha_nacimiento && (
+                          <p className="text-gray-700 mb-1"><strong>Fecha de Nacimiento:</strong> {new Date(selectedAnimalDetail.fecha_nacimiento).toLocaleDateString('es-ES')}</p>
+                        )}
+                      </div>
+                    </div>
+                    {selectedAnimalDetail.en_venta && (
+                      <div className="mt-4 p-4 bg-green-50 border border-green-400 rounded-lg">
+                        <p className="text-lg font-bold text-green-700">
+                          Precio: {formatPrecio(selectedAnimalDetail.precio_venta ?? 0, selectedAnimalDetail.usuario?.rancho_pais)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Historial de Pesos */}
+                  <div className="mb-6">
+                    <h4 className="text-xl font-bold text-black mb-4">Historial de Pesos</h4>
+                    {animalPesos && animalPesos.length > 0 ? (
+                      <div className="space-y-3">
+                        {animalPesos.map((peso: any, index: number) => {
+                          if (!peso || !peso.peso || !peso.fecha_registro) return null
+                          
+                          const pesoAnterior = index < animalPesos.length - 1 ? animalPesos[index + 1] : null
+                          const diferencia = pesoAnterior && pesoAnterior.peso
+                            ? parseFloat(peso.peso) - parseFloat(pesoAnterior.peso)
+                            : null
+                          
+                          return (
+                            <div
+                              key={peso.id || index}
+                              className="bg-white rounded-lg p-4 border-l-4 border-l-cownect-green border border-gray-200"
+                              style={{ borderLeftWidth: '4px' }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className="text-lg font-bold text-black mb-1">
+                                    {parseFloat(peso.peso || 0).toLocaleString('es-ES')} kg
+                                  </p>
+                                  <p className="text-gray-600 text-sm mb-1">
+                                    {new Date(peso.fecha_registro).toLocaleDateString('es-ES', { 
+                                      day: 'numeric', 
+                                      month: 'long', 
+                                      year: 'numeric' 
+                                    })}
+                                  </p>
+                                  {peso.observaciones && (
+                                    <p className="text-gray-700 text-sm"><strong>Observaciones:</strong> {peso.observaciones}</p>
+                                  )}
+                                </div>
+                                {diferencia !== null && diferencia !== 0 && (
+                                  <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                    diferencia > 0 
+                                      ? 'bg-green-100 text-green-700' 
+                                      : 'bg-red-100 text-red-700'
+                                  }`}>
+                                    {diferencia > 0 ? '+' : ''}{diferencia.toFixed(1)} kg
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        Sin historial disponible
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Historial de Vacunaciones */}
+                  <div className="mb-6">
+                    <h4 className="text-xl font-bold text-black mb-4">Historial de Vacunaciones</h4>
+                    {animalVacunaciones && animalVacunaciones.length > 0 ? (
+                      <div className="space-y-3">
+                        {animalVacunaciones.map((vac: any) => {
+                          if (!vac || !vac.tipo_vacuna || !vac.fecha_aplicacion) return null
+                          
+                          return (
+                            <div
+                              key={vac.id}
+                              className="bg-white rounded-lg p-4 border-l-4 border-l-blue-500 border border-gray-200"
+                              style={{ borderLeftWidth: '4px' }}
+                            >
+                              <p className="text-lg font-bold text-black mb-1">{vac.tipo_vacuna}</p>
+                              <p className="text-gray-600 text-sm mb-1">
+                                <strong>Fecha de Aplicación:</strong> {new Date(vac.fecha_aplicacion).toLocaleDateString('es-ES', { 
+                                  day: 'numeric', 
+                                  month: 'long', 
+                                  year: 'numeric' 
+                                })}
+                              </p>
+                              {vac.proxima_dosis && (
+                                <p className="text-gray-600 text-sm mb-1">
+                                  <strong>Próxima Dosis:</strong> {new Date(vac.proxima_dosis).toLocaleDateString('es-ES', { 
+                                    day: 'numeric', 
+                                    month: 'long', 
+                                    year: 'numeric' 
+                                  })}
+                                </p>
+                              )}
+                              {vac.observaciones && (
+                                <p className="text-gray-700 text-sm"><strong>Observaciones:</strong> {vac.observaciones}</p>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        Sin historial disponible
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowAnimalDetailModal(false)
+                      setSelectedAnimalDetail(null)
+                      setAnimalPesos([])
+                      setAnimalVacunaciones([])
+                    }}
+                    className="w-full bg-cownect-green text-white py-3 rounded-lg font-bold text-lg hover:bg-opacity-90 transition-all"
+                  >
+                    Cerrar
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Compra Exitosa */}
+        {showCompraExitosoModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
+            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
+              <h3 className="text-xl font-bold text-black mb-4">Compra Iniciada</h3>
+              <p className="text-gray-700 mb-6">¡Compra iniciada! Revisa tu dashboard para completar la transacción.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowCompraExitosoModal(false)
+                    router.push('/dashboard')
+                  }}
+                  className="flex-1 bg-cownect-green text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-opacity-90 transition-all"
+                >
+                  Ir al Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Error */}
+        {showErrorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
+            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
+              <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
+              <p className="text-gray-700 mb-6">{errorMessage}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowErrorModal(false)
+                    setErrorMessage('')
+                  }}
+                  className="flex-1 bg-gray-400 text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-gray-500 transition-all"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Éxito */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
+            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
+              <h3 className="text-xl font-bold text-cownect-green mb-4">Éxito</h3>
+              <p className="text-gray-700 mb-6">{successMessage}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowSuccessModal(false)
+                    setSuccessMessage('')
+                  }}
+                  className="flex-1 bg-cownect-green text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-opacity-90 transition-all"
+                >
+                  Aceptar
                 </button>
               </div>
             </div>
