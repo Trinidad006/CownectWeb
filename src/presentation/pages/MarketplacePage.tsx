@@ -10,8 +10,10 @@ import ProtectedRoute from '../components/auth/ProtectedRoute'
 import DashboardHeader from '../components/layouts/DashboardHeader'
 import StarRating from '../components/ui/StarRating'
 import { PAISES_MONEDAS, formatPrecio, getMonedaByPais } from '@/utils/paisesMonedas'
+import { getDriveImageUrl } from '@/utils/driveImage'
 import { AnimalValidator } from '@/domain/validators/AnimalValidator'
 import Select from '../components/ui/Select'
+import BackButton from '../components/ui/BackButton'
 
 function MarketplaceContent() {
   const router = useRouter()
@@ -390,7 +392,10 @@ function MarketplaceContent() {
       <DashboardHeader />
       
       <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10 animate-contentFadeIn">
-        <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+        <div className="bg-white rounded-lg shadow-2xl p-8 mb-6 relative">
+          <div className="flex items-center gap-3 mb-4">
+            <BackButton href="/dashboard" inline />
+          </div>
           <div className="flex flex-col items-center mb-6">
             <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">Cownect</h1>
             <h2 className="text-2xl font-bold text-black mb-4">Marketplace Ganadero</h2>
@@ -538,10 +543,11 @@ function MarketplaceContent() {
                   {animal.foto && (
                     <div className="relative w-full h-48 mb-3 rounded-lg overflow-hidden">
                       <Image
-                        src={animal.foto}
+                        src={getDriveImageUrl(animal.foto) || animal.foto}
                         alt={animal.nombre || 'Animal'}
                         fill
                         className="object-cover"
+                        unoptimized
                       />
                     </div>
                   )}
@@ -675,8 +681,11 @@ function MarketplaceContent() {
 
         {showPurchaseModal && animalToBuy && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-              <h3 className="text-2xl font-bold text-black mb-2">Compra</h3>
+            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 relative">
+              <div className="flex items-center gap-3 mb-4">
+                <BackButton onClick={() => { setShowPurchaseModal(false); setAnimalToBuy(null) }} inline />
+                <h3 className="text-2xl font-bold text-black">Compra</h3>
+              </div>
               <p className="text-gray-700 mb-4">
                 ¿Iniciar proceso de compra de <strong>{animalToBuy.nombre}</strong> por {formatPrecio(animalToBuy.precio_venta ?? 0, animalToBuy.usuario?.rancho_pais)}?
               </p>
@@ -702,8 +711,19 @@ function MarketplaceContent() {
 
         {showMarkForSale && selectedAnimal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-4">
-            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-              <h3 className="text-2xl font-bold text-black mb-4">Poner en Venta</h3>
+            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 relative">
+              <div className="flex items-center gap-3 mb-4">
+                <BackButton
+                  onClick={() => {
+                    setShowMarkForSale(false)
+                    setSelectedAnimal(null)
+                    setPrice('')
+                    setRanchoData({ rancho: '', rancho_hectareas: '', rancho_pais: '', rancho_ciudad: '', rancho_direccion: '', rancho_descripcion: '' })
+                  }}
+                  inline
+                />
+                <h3 className="text-2xl font-bold text-black">Poner en Venta</h3>
+              </div>
               <p className="text-gray-700 mb-4"><strong>Animal:</strong> {selectedAnimal.nombre || 'Sin nombre'}</p>
               <div className="space-y-4">
                 <div>
@@ -784,8 +804,11 @@ function MarketplaceContent() {
 
         {showReportModal && userToReport && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-              <h3 className="text-2xl font-bold text-black mb-2">Reportar usuario</h3>
+            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 relative">
+              <div className="flex items-center gap-3 mb-4">
+                <BackButton onClick={() => { setShowReportModal(false); setUserToReport(null); setReportMotivo(''); setReportDetalles('') }} inline />
+                <h3 className="text-2xl font-bold text-black">Reportar usuario</h3>
+              </div>
               <p className="text-gray-700 mb-4">Reportando a: <strong>{userToReport.nombre} {userToReport.apellido}</strong></p>
               <div className="space-y-4 mb-4">
                 <div>
@@ -833,8 +856,11 @@ function MarketplaceContent() {
 
         {showRatingModal && selectedVendedor && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-              <h3 className="text-2xl font-bold text-black mb-2">Calificar vendedor</h3>
+            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 relative">
+              <div className="flex items-center gap-3 mb-4">
+                <BackButton onClick={() => { setShowRatingModal(false); setSelectedVendedor(null) }} inline />
+                <h3 className="text-2xl font-bold text-black">Calificar vendedor</h3>
+              </div>
               <p className="text-gray-700 mb-1">{selectedVendedor.nombre} {selectedVendedor.apellido}</p>
               {selectedVendedor.rancho && <p className="text-gray-600 mb-4 text-sm">Rancho: {selectedVendedor.rancho}</p>}
               <div className="mb-4">
@@ -863,20 +889,18 @@ function MarketplaceContent() {
         {/* Modal de Detalle del Animal */}
         {showAnimalDetailModal && selectedAnimalDetail && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-            <div className="bg-white rounded-lg shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-black">Información del Animal</h3>
-                <button
+            <div className="bg-white rounded-lg shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn relative">
+              <div className="flex items-center gap-3 mb-6">
+                <BackButton
                   onClick={() => {
                     setShowAnimalDetailModal(false)
                     setSelectedAnimalDetail(null)
                     setAnimalPesos([])
                     setAnimalVacunaciones([])
                   }}
-                  className="text-gray-500 hover:text-black text-3xl font-bold"
-                >
-                  ×
-                </button>
+                  inline
+                />
+                <h3 className="text-2xl font-bold text-black">Información del Animal</h3>
               </div>
 
               {loadingAnimalDetail ? (
@@ -890,10 +914,11 @@ function MarketplaceContent() {
                       <div className="mb-4 flex justify-center">
                         <div className="relative w-full max-w-md h-64 rounded-lg overflow-hidden border-2 border-gray-200">
                           <Image
-                            src={selectedAnimalDetail.foto}
+                            src={getDriveImageUrl(selectedAnimalDetail.foto) || selectedAnimalDetail.foto}
                             alt={selectedAnimalDetail.nombre || 'Animal'}
                             fill
                             className="object-cover"
+                            unoptimized
                           />
                         </div>
                       </div>
@@ -1087,8 +1112,11 @@ function MarketplaceContent() {
         {/* Modal de Compra Exitosa */}
         {showCompraExitosoModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-              <h3 className="text-xl font-bold text-black mb-4">Compra Iniciada</h3>
+            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+              <div className="flex items-center gap-3 mb-4">
+                <BackButton onClick={() => { setShowCompraExitosoModal(false); router.push('/marketplace') }} inline />
+                <h3 className="text-xl font-bold text-black">Compra Iniciada</h3>
+              </div>
               <p className="text-gray-700 mb-6">¡Compra iniciada! Revisa tu dashboard para completar la transacción.</p>
               <div className="flex gap-3">
                 <button
@@ -1108,15 +1136,15 @@ function MarketplaceContent() {
         {/* Modal de Error */}
         {showErrorModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-              <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
+            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+              <div className="flex items-center gap-3 mb-4">
+                <BackButton onClick={() => { setShowErrorModal(false); setErrorMessage('') }} inline />
+                <h3 className="text-xl font-bold text-red-600">Error</h3>
+              </div>
               <p className="text-gray-700 mb-6">{errorMessage}</p>
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    setShowErrorModal(false)
-                    setErrorMessage('')
-                  }}
+                  onClick={() => { setShowErrorModal(false); setErrorMessage('') }}
                   className="flex-1 bg-gray-400 text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-gray-500 transition-all"
                 >
                   Cerrar
@@ -1129,8 +1157,11 @@ function MarketplaceContent() {
         {/* Modal de Éxito */}
         {showSuccessModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-              <h3 className="text-xl font-bold text-cownect-green mb-4">Éxito</h3>
+            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+              <div className="flex items-center gap-3 mb-4">
+                <BackButton onClick={() => { setShowSuccessModal(false); setSuccessMessage('') }} inline />
+                <h3 className="text-xl font-bold text-cownect-green">Éxito</h3>
+              </div>
               <p className="text-gray-700 mb-6">{successMessage}</p>
               <div className="flex gap-3">
                 <button

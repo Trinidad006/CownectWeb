@@ -9,6 +9,7 @@ import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { formatPrecio } from '@/utils/paisesMonedas'
 import { CalcularEstadisticasUseCase } from '@/domain/use-cases/estadisticas/CalcularEstadisticasUseCase'
 import EstadisticasPanel from '../components/dashboard/EstadisticasPanel'
+import BackButton from '../components/ui/BackButton'
 import { EstadisticasCompletas } from '@/domain/entities/Estadisticas'
 import { Animal } from '@/domain/entities/Animal'
 
@@ -113,7 +114,10 @@ function DashboardContent() {
       
       <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10 animate-contentFadeIn">
         {/* Accesos Rápidos */}
-        <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+        <div className="bg-white rounded-lg shadow-2xl p-8 mb-6 relative">
+          <div className="flex items-center gap-3 mb-4">
+            <BackButton href="/" inline />
+          </div>
           <h2 className="text-2xl font-bold text-black mb-6">Accesos Rápidos</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <button 
@@ -315,8 +319,11 @@ function DashboardContent() {
       {/* Modal de Confirmación de Compra */}
       {showConfirmModal && compraToComplete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full animate-scaleIn">
-            <h3 className="text-2xl font-bold text-black mb-4">Confirmar Compra</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full animate-scaleIn relative">
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => { setShowConfirmModal(false); setCompraToComplete(null) }} inline />
+              <h3 className="text-2xl font-bold text-black">Confirmar Compra</h3>
+            </div>
             <div className="mb-6">
               <p className="text-gray-700 mb-2">
                 <strong>Animal:</strong> {compraToComplete.animal?.nombre || compraToComplete.animal?.numero_identificacion || 'Animal'}
@@ -367,8 +374,11 @@ function DashboardContent() {
       {/* Modal de Confirmación de Cancelación */}
       {showCancelModal && compraToCancel && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full animate-scaleIn">
-            <h3 className="text-2xl font-bold text-black mb-4">Cancelar Compra</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full animate-scaleIn relative">
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => { setShowCancelModal(false); setCompraToCancel(null) }} inline />
+              <h3 className="text-2xl font-bold text-black">Cancelar Compra</h3>
+            </div>
             <div className="mb-6">
               <p className="text-gray-700 mb-2">
                 <strong>Animal:</strong> {compraToCancel.animal?.nombre || compraToCancel.animal?.numero_identificacion || 'Animal'}
@@ -416,8 +426,11 @@ function DashboardContent() {
       {/* Modal de Confirmar Venta Completada */}
       {showCompleteVentaModal && ventaToComplete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-            <h3 className="text-xl font-bold text-black mb-4">Completar Venta</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => { setShowCompleteVentaModal(false); setVentaToComplete(null) }} inline />
+              <h3 className="text-xl font-bold text-black">Completar Venta</h3>
+            </div>
             <p className="text-gray-700 mb-2"><strong>Animal:</strong> {ventaToComplete.animal?.nombre || 'N/A'}</p>
             <p className="text-gray-700 mb-4"><strong>Precio:</strong> {formatPrecio(ventaToComplete.precio, user?.rancho_pais)}</p>
             <p className="text-gray-700 mb-6">¿Confirmar venta completada?</p>
@@ -457,8 +470,11 @@ function DashboardContent() {
       {/* Modal de Cancelar Venta */}
       {showCancelVentaModal && ventaToCancel && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-            <h3 className="text-xl font-bold text-black mb-4">Cancelar Venta</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => { setShowCancelVentaModal(false); setVentaToCancel(null) }} inline />
+              <h3 className="text-xl font-bold text-black">Cancelar Venta</h3>
+            </div>
             <p className="text-gray-700 mb-2"><strong>Animal:</strong> {ventaToCancel.animal?.nombre || 'N/A'}</p>
             <p className="text-gray-700 mb-4"><strong>Precio:</strong> {formatPrecio(ventaToCancel.precio, user?.rancho_pais)}</p>
             <p className="text-gray-700 mb-6">¿Está seguro de cancelar esta venta?</p>
@@ -498,8 +514,11 @@ function DashboardContent() {
       {/* Modal de Éxito */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-            <h3 className="text-xl font-bold text-cownect-green mb-4">Éxito</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => { setShowSuccessModal(false); setSuccessMessage('') }} inline />
+              <h3 className="text-xl font-bold text-cownect-green">Éxito</h3>
+            </div>
             <p className="text-gray-700 mb-6">{successMessage}</p>
             <div className="flex gap-3">
               <button
@@ -519,8 +538,11 @@ function DashboardContent() {
       {/* Modal de Error */}
       {showErrorModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-            <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => { setShowErrorModal(false); setErrorMessage('') }} inline />
+              <h3 className="text-xl font-bold text-red-600">Error</h3>
+            </div>
             <p className="text-gray-700 mb-6">{errorMessage}</p>
             <div className="flex gap-3">
               <button

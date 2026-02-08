@@ -34,7 +34,8 @@ export class AnimalValidator {
       animal.documento_factura_venta &&
       animal.documento_certificado_movilizacion &&
       animal.documento_certificado_zoosanitario &&
-      animal.documento_patente_fierro
+      animal.documento_patente_fierro &&
+      animal.foto
     )
   }
 

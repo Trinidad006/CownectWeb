@@ -9,9 +9,11 @@ import DashboardHeader from '../components/layouts/DashboardHeader'
 import { FirebaseAnimalRepository } from '@/infrastructure/repositories/FirebaseAnimalRepository'
 import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { PAISES_MONEDAS, getMonedaByPais, formatPrecio } from '@/utils/paisesMonedas'
+import { getDriveImageUrl } from '@/utils/driveImage'
 import { AnimalValidator } from '@/domain/validators/AnimalValidator'
 import Select from '../components/ui/Select'
 import ImageUpload from '../components/ui/ImageUpload'
+import BackButton from '../components/ui/BackButton'
 
 const animalRepository = new FirebaseAnimalRepository()
 
@@ -62,6 +64,7 @@ function AnimalesContent() {
     documento_certificado_movilizacion: '',
     documento_certificado_zoosanitario: '',
     documento_patente_fierro: '',
+    foto: '',
   })
 
   useEffect(() => {
@@ -117,6 +120,7 @@ function AnimalesContent() {
         documento_certificado_movilizacion: '',
         documento_certificado_zoosanitario: '',
         documento_patente_fierro: '',
+        foto: '',
       })
       loadAnimales()
       setSuccessMessage(editingAnimal ? 'Animal actualizado exitosamente' : 'Animal registrado exitosamente')
@@ -217,6 +221,7 @@ function AnimalesContent() {
       documento_certificado_movilizacion: animal.documento_certificado_movilizacion || '',
       documento_certificado_zoosanitario: animal.documento_certificado_zoosanitario || '',
       documento_patente_fierro: animal.documento_patente_fierro || '',
+      foto: animal.foto || '',
     })
     setShowForm(true)
   }
@@ -315,7 +320,10 @@ function AnimalesContent() {
       <DashboardHeader />
       
       <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10 animate-contentFadeIn">
-        <div className="bg-white rounded-lg shadow-2xl p-8">
+        <div className="bg-white rounded-lg shadow-2xl p-8 relative">
+          <div className="flex items-center gap-3 mb-4">
+            <BackButton href="/dashboard" inline />
+          </div>
           <div className="flex flex-col items-center mb-6">
             <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">Cownect</h1>
             <h2 className="text-2xl font-bold text-black mb-4">Gestión de Animales</h2>
@@ -339,6 +347,7 @@ function AnimalesContent() {
                   documento_certificado_movilizacion: '',
                   documento_certificado_zoosanitario: '',
                   documento_patente_fierro: '',
+                  foto: '',
                 })
               }}
               className="bg-cownect-green text-white px-6 py-3 rounded-lg font-bold text-lg hover:bg-opacity-90 transition-all"
@@ -494,6 +503,12 @@ function AnimalesContent() {
                     onChange={(url) => setFormData({ ...formData, documento_patente_fierro: url })}
                     required
                   />
+                  <ImageUpload
+                    label="6. Foto del Animal"
+                    value={formData.foto}
+                    onChange={(url) => setFormData({ ...formData, foto: url })}
+                    required
+                  />
                 </div>
                 
                 {/* Indicador de documentos completos */}
@@ -519,6 +534,11 @@ function AnimalesContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {animales.map((animal) => (
               <div key={animal.id} className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
+                {animal.en_venta && animal.foto && (
+                  <div className="mb-4 rounded-lg overflow-hidden border-2 border-cownect-green">
+                    <img src={getDriveImageUrl(animal.foto) || animal.foto} alt={animal.nombre || 'Animal'} className="w-full h-40 object-cover" />
+                  </div>
+                )}
                 <h3 className="text-xl font-bold text-black mb-2">{animal.nombre || 'Sin nombre'}</h3>
                 <p className="text-gray-700 mb-1"><strong>ID:</strong> {animal.numero_identificacion || 'N/A'}</p>
                 <p className="text-gray-700 mb-1"><strong>Especie:</strong> {animal.especie || 'N/A'}</p>
@@ -760,6 +780,7 @@ function AnimalesContent() {
                     <button
                       onClick={() => {
                         setSelectedAnimalForSale(animal)
+                        setFotoAnimal(animal.foto || '')
                         setRanchoData({
                           rancho: user?.rancho || '',
                           rancho_hectareas: user?.rancho_hectareas?.toString() || '',
@@ -801,8 +822,20 @@ function AnimalesContent() {
 
           {showMarkForSale && selectedAnimalForSale && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-4">
-              <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-                <h3 className="text-2xl font-bold text-black mb-4">Poner en Venta</h3>
+              <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 relative">
+                <div className="flex items-center gap-3 mb-4">
+                  <BackButton
+                    onClick={() => {
+                      setShowMarkForSale(false)
+                      setSelectedAnimalForSale(null)
+                      setPrice('')
+                      setFotoAnimal('')
+                      setRanchoData({ rancho: '', rancho_hectareas: '', rancho_pais: '', rancho_ciudad: '', rancho_direccion: '' })
+                    }}
+                    inline
+                  />
+                  <h3 className="text-2xl font-bold text-black">Poner en Venta</h3>
+                </div>
                 <p className="text-gray-700 mb-4"><strong>Animal:</strong> {selectedAnimalForSale.nombre || 'Sin nombre'}</p>
                 <div className="space-y-4">
                   <div>
@@ -878,6 +911,7 @@ function AnimalesContent() {
                     setShowMarkForSale(false)
                     setSelectedAnimalForSale(null)
                     setPrice('')
+                    setFotoAnimal('')
                     setRanchoData({ rancho: '', rancho_hectareas: '', rancho_pais: '', rancho_ciudad: '', rancho_direccion: '' })
                   }}
                     className="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold text-lg hover:bg-gray-500 transition-all"
@@ -894,10 +928,9 @@ function AnimalesContent() {
       {/* Modal para Registrar Cría */}
       {showCriaModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-black">Registrar Cría</h3>
-              <button
+          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton
                 onClick={() => {
                   setShowCriaModal(false)
                   setCriaFormData({
@@ -910,10 +943,9 @@ function AnimalesContent() {
                     madre_id: '',
                   })
                 }}
-                className="text-gray-500 hover:text-black text-3xl font-bold"
-              >
-                ×
-              </button>
+                inline
+              />
+              <h3 className="text-xl font-bold text-black">Registrar Cría</h3>
             </div>
             <form onSubmit={handleRegistrarCria} className="space-y-4">
               <div>
@@ -1031,8 +1063,14 @@ function AnimalesContent() {
       {/* Modal de Confirmación de Eliminación */}
       {showDeleteModal && animalToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full animate-scaleIn">
-            <h3 className="text-2xl font-bold text-black mb-4">Confirmar Eliminación</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full animate-scaleIn relative">
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton
+                onClick={() => { setShowDeleteModal(false); setAnimalToDelete(null) }}
+                inline
+              />
+              <h3 className="text-2xl font-bold text-black">Confirmar Eliminación</h3>
+            </div>
             <div className="mb-6">
               <p className="text-gray-700 mb-2">
                 <strong>Animal:</strong> {animalToDelete.nombre || animalToDelete.numero_identificacion || 'Animal'}
@@ -1065,15 +1103,15 @@ function AnimalesContent() {
       {/* Modal de Éxito */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-            <h3 className="text-xl font-bold text-cownect-green mb-4">Éxito</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => { setShowSuccessModal(false); setSuccessMessage('') }} inline />
+              <h3 className="text-xl font-bold text-cownect-green">Éxito</h3>
+            </div>
             <p className="text-gray-700 mb-6">{successMessage}</p>
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowSuccessModal(false)
-                  setSuccessMessage('')
-                }}
+                onClick={() => { setShowSuccessModal(false); setSuccessMessage('') }}
                 className="flex-1 bg-cownect-green text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-opacity-90 transition-all"
               >
                 Aceptar
@@ -1086,15 +1124,15 @@ function AnimalesContent() {
       {/* Modal de Error */}
       {showErrorModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-            <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => { setShowErrorModal(false); setErrorMessage('') }} inline />
+              <h3 className="text-xl font-bold text-red-600">Error</h3>
+            </div>
             <p className="text-gray-700 mb-6">{errorMessage}</p>
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowErrorModal(false)
-                  setErrorMessage('')
-                }}
+                onClick={() => { setShowErrorModal(false); setErrorMessage('') }}
                 className="flex-1 bg-gray-400 text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-gray-500 transition-all"
               >
                 Cerrar

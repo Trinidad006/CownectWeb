@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import BackButton from './BackButton'
 
 interface StepItemProps {
   number: number
@@ -42,22 +43,17 @@ export default function StepItem({ number, title, description, details }: StepIt
           onClick={() => setShowDetails(false)}
         >
           <div 
-            className="bg-white rounded-lg shadow-2xl p-8 max-w-2xl w-full transform transition-all duration-300 animate-slideUp"
+            className="bg-white rounded-lg shadow-2xl p-8 max-w-2xl w-full transform transition-all duration-300 animate-slideUp relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3 mb-6">
+              <BackButton onClick={() => setShowDetails(false)} inline />
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-cownect-green rounded-lg flex items-center justify-center">
                   <span className="text-white text-2xl font-bold">{number}</span>
                 </div>
                 <h3 className="text-2xl font-bold text-black">{title}</h3>
               </div>
-              <button
-                onClick={() => setShowDetails(false)}
-                className="text-gray-500 hover:text-black text-3xl font-bold transition-colors"
-              >
-                ×
-              </button>
             </div>
             <div className="mb-4">
               <p className="text-gray-700 text-lg mb-4">{description}</p>

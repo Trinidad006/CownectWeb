@@ -28,6 +28,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# Google Drive service account (credenciales)
+google-drive-service-account.json
+
 # vercel
 .vercel
 

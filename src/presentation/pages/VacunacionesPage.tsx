@@ -6,6 +6,7 @@ import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { useAuth } from '../hooks/useAuth'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import DashboardHeader from '../components/layouts/DashboardHeader'
+import BackButton from '../components/ui/BackButton'
 
 function VacunacionesContent() {
   const router = useRouter()
@@ -87,7 +88,10 @@ function VacunacionesContent() {
       <DashboardHeader />
       
       <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10 animate-contentFadeIn">
-        <div className="bg-white rounded-lg shadow-2xl p-8">
+        <div className="bg-white rounded-lg shadow-2xl p-8 relative">
+          <div className="flex items-center gap-3 mb-4">
+            <BackButton href="/dashboard" inline />
+          </div>
           <div className="flex flex-col items-center mb-6">
             <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">Cownect</h1>
             <h2 className="text-2xl font-bold text-black mb-4">Gestión de Vacunaciones</h2>

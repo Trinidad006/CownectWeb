@@ -7,6 +7,7 @@ import { getFirebaseAuth } from '@/infrastructure/config/firebase'
 import { useAuth } from '../../hooks/useAuth'
 import Logo from '../ui/Logo'
 import ImageUpload from '../ui/ImageUpload'
+import BackButton from '../ui/BackButton'
 import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { PAISES_MONEDAS, getMonedaByPais } from '@/utils/paisesMonedas'
 import Image from 'next/image'
@@ -225,18 +226,13 @@ export default function DashboardHeader() {
       {/* Modal para cambiar foto de perfil */}
       {showFotoPerfilModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 animate-fadeIn">
-          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full animate-scaleIn">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full animate-scaleIn relative">
+            <div className="flex items-center gap-3 mb-6">
+              <BackButton
+                onClick={() => { setShowFotoPerfilModal(false); setFotoPerfilUrl('') }}
+                inline
+              />
               <h3 className="text-2xl font-bold text-black">Cambiar Foto de Perfil</h3>
-              <button
-                onClick={() => {
-                  setShowFotoPerfilModal(false)
-                  setFotoPerfilUrl('')
-                }}
-                className="text-gray-500 hover:text-black text-3xl font-bold"
-              >
-                ×
-              </button>
             </div>
             <div className="mb-6">
               <ImageUpload
@@ -271,17 +267,10 @@ export default function DashboardHeader() {
       {/* Modal para editar perfil */}
       {showEditarPerfilModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 animate-fadeIn">
-          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn relative">
+            <div className="flex items-center gap-3 mb-6">
+              <BackButton onClick={() => setShowEditarPerfilModal(false)} inline />
               <h3 className="text-2xl font-bold text-black">Editar Perfil</h3>
-              <button
-                onClick={() => {
-                  setShowEditarPerfilModal(false)
-                }}
-                className="text-gray-500 hover:text-black text-3xl font-bold"
-              >
-                ×
-              </button>
             </div>
             
             <form onSubmit={(e) => { e.preventDefault(); handleGuardarPerfil(); }} className="space-y-4">
@@ -420,8 +409,11 @@ export default function DashboardHeader() {
       {/* Modal de Éxito */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 animate-fadeIn">
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn">
-            <h3 className="text-xl font-bold text-cownect-green mb-4">Éxito</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative">
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => setShowSuccessModal(false)} inline />
+              <h3 className="text-xl font-bold text-cownect-green">Éxito</h3>
+            </div>
             <p className="text-gray-700 mb-6">Perfil actualizado exitosamente</p>
             <div className="flex gap-3">
               <button
@@ -440,8 +432,11 @@ export default function DashboardHeader() {
       {/* Modal de Error */}
       {showErrorModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 animate-fadeIn">
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn">
-            <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
+          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative">
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton onClick={() => { setShowErrorModal(false); setErrorMessage('') }} inline />
+              <h3 className="text-xl font-bold text-red-600">Error</h3>
+            </div>
             <p className="text-gray-700 mb-6">{errorMessage}</p>
             <div className="flex gap-3">
               <button

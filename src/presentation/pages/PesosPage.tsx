@@ -7,6 +7,7 @@ import { getFirebaseDb } from '@/infrastructure/config/firebase'
 import { useAuth } from '../hooks/useAuth'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import DashboardHeader from '../components/layouts/DashboardHeader'
+import BackButton from '../components/ui/BackButton'
 
 // Función para formatear fecha en formato humano
 function formatFechaHumana(fecha: string): string {
@@ -230,7 +231,10 @@ function PesosContent() {
       <DashboardHeader />
       
       <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10 animate-contentFadeIn">
-        <div className="bg-white rounded-lg shadow-2xl p-8">
+        <div className="bg-white rounded-lg shadow-2xl p-8 relative">
+          <div className="flex items-center gap-3 mb-4">
+            <BackButton href="/dashboard" inline />
+          </div>
           <div className="flex flex-col items-center mb-6">
             <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">Cownect</h1>
             <h2 className="text-2xl font-bold text-black mb-4">Control de Peso</h2>
@@ -303,8 +307,11 @@ function PesosContent() {
           {/* Modal de Registro */}
           {showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-              <div className="bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-                <h3 className="text-xl font-bold text-black mb-4">Nuevo Registro de Peso</h3>
+              <div className="bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto animate-scaleIn relative" style={{ zIndex: 10000 }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <BackButton onClick={() => setShowModal(false)} inline />
+                  <h3 className="text-xl font-bold text-black">Nuevo Registro de Peso</h3>
+                </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-base font-bold text-black mb-2">Animal</label>
@@ -489,15 +496,10 @@ function PesosContent() {
       {/* Modal de Detalle del Animal */}
       {showDetalleModal && animalSeleccionado && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
-          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn" style={{ position: 'relative', zIndex: 10000 }}>
-            <div className="flex justify-between items-start mb-6">
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn relative" style={{ zIndex: 10000 }}>
+            <div className="flex items-center gap-3 mb-6">
+              <BackButton onClick={() => setShowDetalleModal(false)} inline />
               <h3 className="text-2xl font-bold text-black">Información del Animal</h3>
-              <button
-                onClick={() => setShowDetalleModal(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
-              >
-                ×
-              </button>
             </div>
 
             {/* Información del Animal */}
