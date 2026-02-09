@@ -8,10 +8,10 @@ const PAYPAL_API = process.env.PAYPAL_SANDBOX === 'true'
   : 'https://api-m.paypal.com'
 
 async function getPayPalAccessToken(): Promise<string> {
-  const clientId = process.env.PAYPAL_CLIENT_ID
+  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || process.env.PAYPAL_CLIENT_ID
   const secret = process.env.PAYPAL_CLIENT_SECRET
   if (!clientId || !secret) {
-    throw new Error('Faltan PAYPAL_CLIENT_ID o PAYPAL_CLIENT_SECRET en .env.local')
+    throw new Error('Faltan NEXT_PUBLIC_PAYPAL_CLIENT_ID o PAYPAL_CLIENT_SECRET en .env.local')
   }
   const auth = Buffer.from(`${clientId}:${secret}`).toString('base64')
   const res = await fetch(`${PAYPAL_API}/v1/oauth2/token`, {
