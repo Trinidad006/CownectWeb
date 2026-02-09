@@ -106,6 +106,10 @@ function MarketplaceContent() {
         animalesData.map(async (animal: any) => {
           const usuario = await firestoreService.getUsuario(animal.usuario_id)
           const calif = usuario ? await firestoreService.getCalificacionPromedio(animal.usuario_id) : { promedio: 0, total: 0 }
+          // Debug: verificar si tiene foto
+          if (process.env.NODE_ENV === 'development' && !animal.foto) {
+            console.warn(`⚠ Animal ${animal.nombre || animal.id} NO tiene foto guardada`)
+          }
           return { ...animal, usuario: usuario || null, calificacion: calif }
         })
       )
@@ -543,15 +547,50 @@ function MarketplaceContent() {
                   className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200 cursor-pointer hover:shadow-lg transition-all"
                   onClick={() => handleVerDetalleAnimal(animal)}
                 >
-                  {animal.foto && (
-                    <div className="relative w-full h-48 mb-3 rounded-lg overflow-hidden">
-                      <Image
-                        src={getDriveImageUrl(animal.foto) || animal.foto}
+                  {animal.foto ? (
+                    <div className="relative w-full h-48 mb-3 rounded-lg overflow-hidden bg-gray-200">
+                      <img
+                        src={getDriveImageUrl(animal.foto)}
                         alt={animal.nombre || 'Animal'}
-                        fill
-                        className="object-cover"
-                        unoptimized
+                        className="w-full h-full object-cover"
+                        onLoad={() => {
+                          if (process.env.NODE_ENV === 'development') {
+                            console.log(`✓ Foto cargada para ${animal.nombre}:`, animal.foto)
+                          }
+                        }}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          const originalUrl = animal.foto
+                          const convertedUrl = getDriveImageUrl(animal.foto)
+                          
+                          if (process.env.NODE_ENV === 'development') {
+                            console.error(`✗ Error cargando foto de ${animal.nombre}:`, {
+                              original: originalUrl,
+                              converted: convertedUrl,
+                              currentSrc: target.src
+                            })
+                          }
+                          
+                          // Si falla la URL convertida, intentar con la original directamente
+                          if (target.src !== originalUrl && originalUrl) {
+                            target.src = originalUrl
+                          } else if (target.src === originalUrl && originalUrl) {
+                            // Si también falla la original, intentar formato directo thumbnail
+                            const fileIdMatch = originalUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) || originalUrl.match(/\/d\/([a-zA-Z0-9_-]+)/)
+                            if (fileIdMatch && fileIdMatch[1]) {
+                              const directThumbnail = `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w800`
+                              if (process.env.NODE_ENV === 'development') {
+                                console.log(`Intentando URL directa thumbnail: ${directThumbnail}`)
+                              }
+                              target.src = directThumbnail
+                            }
+                          }
+                        }}
                       />
+                    </div>
+                  ) : (
+                    <div className="w-full h-48 mb-3 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-400 text-sm">Sin foto</span>
                     </div>
                   )}
                   <h4 className="text-xl font-bold text-black mb-2">{animal.nombre || 'Sin nombre'}</h4>
@@ -969,16 +1008,53 @@ function MarketplaceContent() {
                   {/* Datos del Animal */}
                   <div className="mb-6">
                     <h4 className="text-xl font-bold text-black mb-4">Datos del Animal</h4>
-                    {selectedAnimalDetail.foto && (
+                    {selectedAnimalDetail.foto ? (
                       <div className="mb-4 flex justify-center">
-                        <div className="relative w-full max-w-md h-64 rounded-lg overflow-hidden border-2 border-gray-200">
-                          <Image
-                            src={getDriveImageUrl(selectedAnimalDetail.foto) || selectedAnimalDetail.foto}
+                        <div className="w-full max-w-md h-64 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100">
+                          <img
+                            src={getDriveImageUrl(selectedAnimalDetail.foto)}
                             alt={selectedAnimalDetail.nombre || 'Animal'}
-                            fill
-                            className="object-cover"
-                            unoptimized
+                            className="w-full h-full object-cover"
+                            onLoad={() => {
+                              if (process.env.NODE_ENV === 'development') {
+                                console.log(`✓ Foto cargada en modal para ${selectedAnimalDetail.nombre}:`, selectedAnimalDetail.foto)
+                              }
+                            }}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              const originalUrl = selectedAnimalDetail.foto
+                              const convertedUrl = getDriveImageUrl(selectedAnimalDetail.foto)
+                              
+                              if (process.env.NODE_ENV === 'development') {
+                                console.error(`✗ Error cargando foto en modal de ${selectedAnimalDetail.nombre}:`, {
+                                  original: originalUrl,
+                                  converted: convertedUrl,
+                                  currentSrc: target.src
+                                })
+                              }
+                              
+                              // Si falla la URL convertida, intentar con la original directamente
+                              if (target.src !== originalUrl && originalUrl) {
+                                target.src = originalUrl
+                              } else if (target.src === originalUrl && originalUrl) {
+                                // Si también falla la original, intentar formato directo thumbnail
+                                const fileIdMatch = originalUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) || originalUrl.match(/\/d\/([a-zA-Z0-9_-]+)/)
+                                if (fileIdMatch && fileIdMatch[1]) {
+                                  const directThumbnail = `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w800`
+                                  if (process.env.NODE_ENV === 'development') {
+                                    console.log(`Intentando URL directa thumbnail en modal: ${directThumbnail}`)
+                                  }
+                                  target.src = directThumbnail
+                                }
+                              }
+                            }}
                           />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-4 flex justify-center">
+                        <div className="w-full max-w-md h-64 rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+                          <span className="text-gray-400">Sin foto</span>
                         </div>
                       </div>
                     )}

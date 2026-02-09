@@ -267,7 +267,8 @@ function AnimalesContent() {
       const { getFirebaseDb } = await import('@/infrastructure/config/firebase')
       const db = getFirebaseDb()
       
-      // Actualizar animal con precio, estado y foto si existe
+      // Actualizar animal con precio, estado y foto
+      // Si se subió nueva foto, usarla; si no, mantener la que ya tiene el animal
       const updateData: any = {
         en_venta: true,
         precio_venta: parseFloat(price),
@@ -275,9 +276,8 @@ function AnimalesContent() {
         vistas: 0,
         updated_at: new Date().toISOString(),
       }
-      if (fotoAnimal) {
-        updateData.foto = fotoAnimal
-      }
+      // Usar foto nueva si se subió, o mantener la existente del animal
+      updateData.foto = fotoAnimal || selectedAnimalForSale.foto || ''
       
       await updateDoc(doc(db, 'animales', selectedAnimalForSale.id as string), updateData)
       const info = ranchoData.rancho_pais ? getMonedaByPais(ranchoData.rancho_pais) : null
@@ -534,11 +534,54 @@ function AnimalesContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {animales.map((animal) => (
               <div key={animal.id} className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
-                {animal.en_venta && animal.foto && (
-                  <div className="mb-4 rounded-lg overflow-hidden border-2 border-cownect-green">
-                    <img src={getDriveImageUrl(animal.foto) || animal.foto} alt={animal.nombre || 'Animal'} className="w-full h-40 object-cover" />
+                {animal.foto ? (
+                  <div className={`mb-4 rounded-lg overflow-hidden ${animal.en_venta ? 'border-2 border-cownect-green' : 'border border-gray-300'}`}>
+                    <img 
+                      src={getDriveImageUrl(animal.foto)} 
+                      alt={animal.nombre || 'Animal'} 
+                      className="w-full h-40 object-cover"
+                      onLoad={() => {
+                        if (process.env.NODE_ENV === 'development') {
+                          console.log(`✓ Foto cargada para ${animal.nombre}:`, animal.foto)
+                        }
+                      }}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        const originalUrl = animal.foto
+                        const convertedUrl = getDriveImageUrl(animal.foto)
+                        
+                        if (process.env.NODE_ENV === 'development') {
+                          console.error(`✗ Error cargando foto de ${animal.nombre}:`, {
+                            original: originalUrl,
+                            converted: convertedUrl,
+                            currentSrc: target.src
+                          })
+                        }
+                        
+                        // Si falla la URL convertida, intentar con la original directamente
+                        if (target.src !== originalUrl && originalUrl) {
+                          target.src = originalUrl
+                        } else if (target.src === originalUrl && originalUrl) {
+                          // Si también falla la original, intentar formato directo thumbnail
+                          const fileIdMatch = originalUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) || originalUrl.match(/\/d\/([a-zA-Z0-9_-]+)/)
+                          if (fileIdMatch && fileIdMatch[1]) {
+                            const directThumbnail = `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w800`
+                            if (process.env.NODE_ENV === 'development') {
+                              console.log(`Intentando URL directa thumbnail: ${directThumbnail}`)
+                            }
+                            target.src = directThumbnail
+                          }
+                        }
+                      }}
+                    />
                   </div>
-                )}
+                ) : animal.en_venta ? (
+                  <div className="mb-4 rounded-lg overflow-hidden border-2 border-yellow-400 bg-yellow-50 p-3">
+                    <p className="text-yellow-800 text-sm font-semibold text-center">
+                      ⚠ Este animal no tiene foto. Edítalo para añadir una foto.
+                    </p>
+                  </div>
+                ) : null}
                 <h3 className="text-xl font-bold text-black mb-2">{animal.nombre || 'Sin nombre'}</h3>
                 <p className="text-gray-700 mb-1"><strong>ID:</strong> {animal.numero_identificacion || 'N/A'}</p>
                 <p className="text-gray-700 mb-1"><strong>Especie:</strong> {animal.especie || 'N/A'}</p>
