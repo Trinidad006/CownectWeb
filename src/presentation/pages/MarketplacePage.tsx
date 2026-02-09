@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
 import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { Animal } from '@/domain/entities/Animal'
 import { useAuth } from '../hooks/useAuth'
@@ -14,6 +15,8 @@ import { getDriveImageUrl } from '@/utils/driveImage'
 import { AnimalValidator } from '@/domain/validators/AnimalValidator'
 import Select from '../components/ui/Select'
 import BackButton from '../components/ui/BackButton'
+
+const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || ''
 
 function MarketplaceContent() {
   const router = useRouter()
@@ -684,19 +687,75 @@ function MarketplaceContent() {
             <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 relative">
               <div className="flex items-center gap-3 mb-4">
                 <BackButton onClick={() => { setShowPurchaseModal(false); setAnimalToBuy(null) }} inline />
-                <h3 className="text-2xl font-bold text-black">Compra</h3>
+                <h3 className="text-2xl font-bold text-black">Compra con PayPal</h3>
               </div>
-              <p className="text-gray-700 mb-4">
-                ¿Iniciar proceso de compra de <strong>{animalToBuy.nombre}</strong> por {formatPrecio(animalToBuy.precio_venta ?? 0, animalToBuy.usuario?.rancho_pais)}?
+              <p className="text-gray-700 mb-2">
+                <strong>{animalToBuy.nombre}</strong>
               </p>
-              <p className="text-sm text-gray-600 mb-4">La compra quedará en proceso. Podrás completarla o cancelarla desde tu dashboard.</p>
-              <div className="flex gap-4">
+              <p className="text-lg font-bold text-cownect-green mb-4">
+                {formatPrecio(animalToBuy.precio_venta ?? 0, animalToBuy.usuario?.rancho_pais)}
+              </p>
+              {paypalClientId ? (
+                <PayPalScriptProvider options={{ clientId: paypalClientId, currency: getMonedaByPais(animalToBuy.usuario?.rancho_pais)?.moneda || 'USD' }}>
+                  <PayPalButtons
+                    style={{ layout: 'vertical' }}
+                    createOrder={async () => {
+                      const currency = getMonedaByPais(animalToBuy.usuario?.rancho_pais)?.moneda || 'USD'
+                      const amount = Number(animalToBuy.precio_venta) || 0
+                      const res = await fetch('/api/paypal/create-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          amount,
+                          currency,
+                          animalId: animalToBuy.id,
+                          compradorId: user?.id,
+                        }),
+                      })
+                      const data = await res.json()
+                      if (!res.ok) throw new Error(data.error || 'Error al crear orden')
+                      return data.orderID
+                    }}
+                    onApprove={async (data) => {
+                      setPurchaseSaving(true)
+                      try {
+                        const res = await fetch('/api/paypal/capture-order', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ orderID: data.orderID }),
+                        })
+                        const result = await res.json()
+                        if (!res.ok) throw new Error(result.error || 'Error al procesar el pago')
+                        setShowPurchaseModal(false)
+                        setAnimalToBuy(null)
+                        loadAnimalesForSale()
+                        loadMisVentas()
+                        setShowCompraExitosoModal(true)
+                      } catch (err: any) {
+                        setErrorMessage(err?.message || 'Error al procesar el pago')
+                        setShowErrorModal(true)
+                      } finally {
+                        setPurchaseSaving(false)
+                      }
+                    }}
+                    onError={(err) => {
+                      setErrorMessage(err?.message || 'Error con PayPal')
+                      setShowErrorModal(true)
+                    }}
+                  />
+                </PayPalScriptProvider>
+              ) : (
+                <p className="text-sm text-amber-700 bg-amber-50 p-3 rounded mb-4">
+                  PayPal no configurado. Añade NEXT_PUBLIC_PAYPAL_CLIENT_ID en .env.local para pagar con PayPal.
+                </p>
+              )}
+              <div className="flex gap-4 mt-4">
                 <button
                   onClick={confirmarCompra}
                   disabled={purchaseSaving}
-                  className="flex-1 bg-cownect-green text-white py-3 rounded-lg font-bold hover:bg-opacity-90 transition-all disabled:opacity-50"
+                  className="flex-1 bg-gray-500 text-white py-3 rounded-lg font-bold hover:bg-gray-600 transition-all disabled:opacity-50 text-sm"
                 >
-                  {purchaseSaving ? 'Procesando...' : 'Confirmar compra'}
+                  {purchaseSaving ? 'Procesando...' : 'Continuar sin PayPal (prueba)'}
                 </button>
                 <button
                   onClick={() => { setShowPurchaseModal(false); setAnimalToBuy(null) }}
