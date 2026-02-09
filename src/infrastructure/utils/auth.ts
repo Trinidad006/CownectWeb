@@ -29,6 +29,8 @@ export async function getCurrentUser(): Promise<{
   rancho_direccion?: string
   rancho_descripcion?: string
   moneda?: string
+  plan?: 'gratuito' | 'premium'
+  suscripcion_activa?: boolean
 } | null> {
   try {
     const auth = getFirebaseAuth()
@@ -52,6 +54,8 @@ export async function getCurrentUser(): Promise<{
       rancho_direccion: profile?.rancho_direccion,
       rancho_descripcion: profile?.rancho_descripcion,
       moneda: profile?.moneda,
+      plan: profile?.plan || 'gratuito',
+      suscripcion_activa: profile?.suscripcion_activa || false,
     }
   } catch (error) {
     return null

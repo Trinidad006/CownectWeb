@@ -30,6 +30,8 @@ export class FirebaseAuthRepository implements AuthRepository {
 
       const profile = {
         email: data.email,
+        plan: 'gratuito',
+        suscripcion_activa: false,
         nombre: data.nombre ?? null,
         apellido: data.apellido ?? null,
         telefono: data.telefono ?? null,

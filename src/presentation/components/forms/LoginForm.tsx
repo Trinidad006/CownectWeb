@@ -48,7 +48,7 @@ export default function LoginForm() {
       }
 
       await new Promise(resolve => setTimeout(resolve, 300))
-      window.location.href = '/download-app'
+      window.location.href = '/choose-plan'
     } catch (err: any) {
       let errorMessage = 'Error al iniciar sesión. Verifique su conexión.'
       if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {

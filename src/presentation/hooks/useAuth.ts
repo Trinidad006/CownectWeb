@@ -57,6 +57,8 @@ export function useAuth(redirectToLogin = true) {
           rancho_direccion: profile?.rancho_direccion,
           rancho_descripcion: profile?.rancho_descripcion,
           moneda: profile?.moneda,
+          plan: profile?.plan || 'gratuito',
+          suscripcion_activa: profile?.suscripcion_activa || false,
         }
 
         setUser(userData)
@@ -104,6 +106,8 @@ export function useAuth(redirectToLogin = true) {
       rancho_direccion: profile?.rancho_direccion,
       rancho_descripcion: profile?.rancho_descripcion,
       moneda: profile?.moneda,
+      plan: profile?.plan || 'gratuito',
+      suscripcion_activa: profile?.suscripcion_activa || false,
     })
     setIsAuthenticated(true)
   }

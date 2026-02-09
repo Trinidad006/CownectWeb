@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Store, CreditCard } from 'lucide-react'
 import Image from 'next/image'
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
 import { firestoreService } from '@/infrastructure/services/firestoreService'
@@ -392,6 +394,36 @@ function MarketplaceContent() {
     )
   }
 
+  const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
+
+  if (!isPremium) {
+    return (
+      <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat relative" style={{ backgroundImage: 'url(/images/fondo_verde.jpg)' }}>
+        <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+        <DashboardHeader />
+        <div className="container mx-auto px-4 py-8 max-w-2xl relative z-10 flex items-center justify-center min-h-[60vh]">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
+            <Store className="h-16 w-16 text-cownect-green mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-black mb-4">Marketplace Premium</h2>
+            <p className="text-gray-700 mb-6">
+              El Marketplace está disponible solo para usuarios con plan Premium. Con la suscripción podrás comprar y vender ganado, usar pagos seguros con PayPal y acceder a todas las funcionalidades.
+            </p>
+            <Link
+              href="/choose-plan"
+              className="inline-flex items-center gap-2 bg-cownect-green text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-cownect-dark-green transition-all"
+            >
+              <CreditCard className="h-5 w-5" />
+              Ver planes y suscribirme
+            </Link>
+            <p className="mt-4 text-sm text-gray-500">
+              Con el plan gratuito puedes registrar animales, vacunaciones y pesos.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat relative animate-pageEnter" style={{ backgroundImage: 'url(/images/fondo_verde.jpg)' }}>
       <div className="absolute inset-0 bg-black bg-opacity-50"></div>
@@ -735,7 +767,7 @@ function MarketplaceContent() {
                 {formatPrecio(animalToBuy.precio_venta ?? 0, animalToBuy.usuario?.rancho_pais)}
               </p>
               {paypalClientId ? (
-                <PayPalScriptProvider options={{ clientId: paypalClientId, currency: getMonedaByPais(animalToBuy.usuario?.rancho_pais)?.moneda || 'USD' }}>
+                <PayPalScriptProvider options={{ clientId: paypalClientId, currency: getMonedaByPais(animalToBuy.usuario?.rancho_pais)?.moneda || 'USD', locale: 'es_ES' }}>
                   <PayPalButtons
                     style={{ layout: 'vertical' }}
                     createOrder={async () => {
@@ -778,7 +810,7 @@ function MarketplaceContent() {
                       }
                     }}
                     onError={(err) => {
-                      setErrorMessage(err?.message || 'Error con PayPal')
+                      setErrorMessage(err instanceof Error ? err.message : 'Error con PayPal')
                       setShowErrorModal(true)
                     }}
                   />

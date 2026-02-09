@@ -12,6 +12,8 @@ export interface User {
   rancho_descripcion?: string
   moneda?: string
   foto_perfil?: string // URL de la imagen de perfil
+  plan?: 'gratuito' | 'premium'
+  suscripcion_activa?: boolean
   created_at?: string
   updated_at?: string
 }
