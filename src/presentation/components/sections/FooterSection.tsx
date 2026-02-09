@@ -9,11 +9,15 @@ export default function FooterSection() {
 
   const handleAccessSystem = async (e: React.MouseEvent) => {
     e.preventDefault()
-    const { isAuthenticated } = await checkAuthentication()
-    
-    if (isAuthenticated) {
-      router.push('/dashboard')
-    } else {
+    try {
+      const { isAuthenticated } = await checkAuthentication()
+      if (isAuthenticated) {
+        router.push('/dashboard')
+      } else {
+        router.push('/login')
+      }
+    } catch (error) {
+      console.error('Error al verificar autenticación:', error)
       router.push('/login')
     }
   }
