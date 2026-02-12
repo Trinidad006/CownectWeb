@@ -9,7 +9,7 @@ interface BackButtonProps {
 
 export default function BackButton({ href = '/', onClick, inline }: BackButtonProps) {
   const buttonContent = (
-    <div className="flex items-center gap-2 bg-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+    <div className="flex items-center gap-2 bg-cownect-dark-green px-5 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
       <svg
         width="24"
         height="24"
@@ -19,17 +19,17 @@ export default function BackButton({ href = '/', onClick, inline }: BackButtonPr
       >
         <path
           d="M15 18L9 12L15 6"
-          stroke="black"
+          stroke="white"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </svg>
-      <span className="text-black text-base font-semibold">Volver</span>
+      <span className="text-white text-base font-semibold">Volver</span>
     </div>
   )
 
-  const wrapperClass = inline ? '' : 'absolute top-4 left-4 z-20'
+  const wrapperClass = inline ? '' : 'absolute top-4 left-4 z-30'
 
   if (onClick) {
     return (

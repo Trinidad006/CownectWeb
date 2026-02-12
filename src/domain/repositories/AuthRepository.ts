@@ -25,5 +25,6 @@ export interface AuthRepository {
   login(data: LoginData): Promise<{ user: User | null; error: string | null }>
   logout(): Promise<void>
   getCurrentUser(): Promise<User | null>
+  sendPasswordResetEmail(email: string): Promise<{ success: boolean; error: string | null }>
 }
 

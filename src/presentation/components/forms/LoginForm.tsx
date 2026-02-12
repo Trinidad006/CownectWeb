@@ -20,10 +20,14 @@ export default function LoginForm() {
 
   useEffect(() => {
     const registered = searchParams.get('registered')
+    const reset = searchParams.get('reset')
+    
     if (registered === 'verify') {
       setSuccess('Cuenta creada. Revisa tu correo y haz clic en el enlace de verificación para activar tu cuenta. Luego inicia sesión.')
     } else if (registered === 'true') {
       setSuccess('Registro exitoso. Por favor inicia sesión.')
+    } else if (reset === 'success') {
+      setSuccess('Contraseña restablecida exitosamente. Ahora puedes iniciar sesión con tu nueva contraseña.')
     }
   }, [searchParams])
 

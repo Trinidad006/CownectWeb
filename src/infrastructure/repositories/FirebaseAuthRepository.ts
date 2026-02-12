@@ -3,6 +3,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendEmailVerification,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { getFirebaseAuth, getFirebaseDb, getLanguageCodeByCountry } from '../config/firebase'
@@ -159,6 +160,55 @@ export class FirebaseAuthRepository implements AuthRepository {
       }
     } catch (error) {
       return null
+    }
+  }
+
+  async sendPasswordResetEmail(email: string): Promise<{ success: boolean; error: string | null }> {
+    try {
+      // Validación backend: email no vacío
+      const trimmedEmail = email.trim()
+      if (!trimmedEmail) {
+        return { success: false, error: 'El correo electrónico es requerido.' }
+      }
+
+      // Validación backend: formato básico de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(trimmedEmail)) {
+        return { success: false, error: 'El correo electrónico no tiene un formato válido.' }
+      }
+
+      const auth = getFirebaseAuth()
+      
+      // Configurar la URL de redirección después de resetear la contraseña
+      const actionCodeSettings = typeof window !== 'undefined' ? {
+        url: `${window.location.origin}/login?reset=success`,
+        handleCodeInApp: false,
+      } : undefined
+
+      await firebaseSendPasswordResetEmail(auth, trimmedEmail, actionCodeSettings)
+      
+      // Por seguridad, siempre devolvemos éxito incluso si el usuario no existe
+      // Esto previene la enumeración de usuarios (ataque de seguridad)
+      return { success: true, error: null }
+    } catch (error: any) {
+      let errorMessage = 'Error al enviar el correo de recuperación.'
+      
+      // Manejo específico de errores de Firebase Auth
+      if (error?.code === 'auth/invalid-email') {
+        errorMessage = 'El correo electrónico no es válido.'
+      } else if (error?.code === 'auth/too-many-requests') {
+        errorMessage = 'Demasiados intentos. Por favor espera unos minutos antes de intentar nuevamente.'
+      } else if (error?.code === 'auth/network-request-failed') {
+        errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.'
+      } else if (error?.code === 'auth/user-not-found') {
+        // Por seguridad, mostramos el mismo mensaje de éxito para evitar enumeración
+        // Firebase puede lanzar este error, pero por seguridad no lo revelamos
+        return { success: true, error: null }
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      return { success: false, error: errorMessage }
     }
   }
 }
