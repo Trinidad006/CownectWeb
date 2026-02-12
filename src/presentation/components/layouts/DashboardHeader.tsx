@@ -11,6 +11,7 @@ import BackButton from '../ui/BackButton'
 import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { PAISES_MONEDAS, getMonedaByPais } from '@/utils/paisesMonedas'
 import Image from 'next/image'
+import { Zap } from 'lucide-react'
 
 export default function DashboardHeader() {
   const router = useRouter()
@@ -49,6 +50,11 @@ export default function DashboardHeader() {
   const iniciales = user?.nombre && user?.apellido
     ? `${user.nombre[0]}${user.apellido[0]}`.toUpperCase()
     : user?.nombre?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'
+
+  const almacenamientoTexto =
+    user?.plan === 'premium' || user?.suscripcion_activa
+      ? 'Plan Premium: más almacenamiento disponible'
+      : 'Plan Gratuito: almacenamiento base'
 
   const handleGuardarFotoPerfil = async () => {
     if (!fotoPerfilUrl || !user?.id) return
@@ -146,7 +152,15 @@ export default function DashboardHeader() {
                 </div>
               )}
               <div className="hidden md:block text-left">
-                <p className="text-sm font-semibold text-black">{nombreCompleto}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-black">{nombreCompleto}</p>
+                  {(user?.plan === 'premium' || user?.suscripcion_activa) && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-cownect-green/20 text-cownect-green">
+                      <Zap className="w-3 h-3" />
+                      Premium
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-600">{user?.email}</p>
               </div>
               <svg
@@ -179,13 +193,22 @@ export default function DashboardHeader() {
                       </div>
                     )}
                     <div>
-                      <p className="text-sm font-semibold text-black">{nombreCompleto}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-black">{nombreCompleto}</p>
+                        {(user?.plan === 'premium' || user?.suscripcion_activa) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-cownect-green/20 text-cownect-green">
+                            <Zap className="w-3 h-3" />
+                            Premium
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-600">{user?.email}</p>
                     </div>
                   </div>
                   {user?.rancho && (
                     <p className="text-xs text-gray-500 mt-1">Rancho: {user.rancho}</p>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">{almacenamientoTexto}</p>
                 </div>
                 <button
                   onClick={handleAbrirEditarPerfil}

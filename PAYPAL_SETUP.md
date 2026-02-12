@@ -36,6 +36,14 @@ PayPal acepta varias monedas (USD, EUR, MXN, BRL, etc.). La app usa la moneda de
 4. Tras aprobar el pago, se captura el dinero y se registra la compra en Firestore (animal en proceso de venta).
 5. Comprador y vendedor pueden completar o cancelar la venta desde el Dashboard como hasta ahora.
 
-## 5. Firestore
+## 5. Firestore y Plan Premium
 
-La API guarda órdenes pendientes en la colección `paypal_pending_orders` (documento por `orderID`). Asegúrate de que tu proyecto Firebase permita a la app de Next.js (o al usuario que ejecuta la API) leer y escribir en esa colección si usas reglas de seguridad.
+- **Órdenes puntuales:** `paypal_pending_orders` (ordenID)
+- **Suscripciones:** `paypal_pending_subscriptions` (ordenID)
+
+Tras capturar el pago de suscripción, la API actualiza `usuarios/{userId}` con:
+- `plan: 'premium'`
+- `suscripcion_activa: true`
+- `suscripcion_fecha`: ISO string
+
+Despliega las reglas con `firebase deploy --only firestore`. Ver `FIREBASE_PREMIUM_SETUP.md` para más detalles.

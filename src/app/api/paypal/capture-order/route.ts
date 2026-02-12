@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'
 import { getFirebaseDb } from '@/infrastructure/config/firebase'
+import { getFirebaseAdminDb, hasAdminCredentials } from '@/infrastructure/config/firebaseAdmin'
 import { firestoreService } from '@/infrastructure/services/firestoreService'
 
 const PAYPAL_API = process.env.PAYPAL_SANDBOX === 'true'
@@ -34,13 +35,27 @@ export async function POST(request: NextRequest) {
     if (!orderID) {
       return NextResponse.json({ error: 'Falta orderID' }, { status: 400 })
     }
-    const db = getFirebaseDb()
-    const pendingRef = doc(db, 'paypal_pending_orders', orderID)
-    const pendingSnap = await getDoc(pendingRef)
-    if (!pendingSnap.exists()) {
-      return NextResponse.json({ error: 'Orden no encontrada o ya usada' }, { status: 404 })
+    let animalId: string
+    let compradorId: string
+    if (hasAdminCredentials()) {
+      const db = getFirebaseAdminDb()
+      const pendingSnap = await db.collection('paypal_pending_orders').doc(orderID).get()
+      if (!pendingSnap.exists) {
+        return NextResponse.json({ error: 'Orden no encontrada o ya usada' }, { status: 404 })
+      }
+      const data = pendingSnap.data()
+      animalId = data?.animalId
+      compradorId = data?.compradorId
+    } else {
+      const db = getFirebaseDb()
+      const pendingSnap = await getDoc(doc(db, 'paypal_pending_orders', orderID))
+      if (!pendingSnap.exists()) {
+        return NextResponse.json({ error: 'Orden no encontrada o ya usada' }, { status: 404 })
+      }
+      const data = pendingSnap.data()
+      animalId = data?.animalId
+      compradorId = data?.compradorId
     }
-    const { animalId, compradorId } = pendingSnap.data()
     if (!animalId || !compradorId) {
       return NextResponse.json({ error: 'Datos de la orden inválidos' }, { status: 400 })
     }
@@ -60,7 +75,11 @@ export async function POST(request: NextRequest) {
       )
     }
     await firestoreService.comprarAnimal(animalId, compradorId)
-    await deleteDoc(pendingRef)
+    if (hasAdminCredentials()) {
+      await getFirebaseAdminDb().collection('paypal_pending_orders').doc(orderID).delete()
+    } else {
+      await deleteDoc(doc(getFirebaseDb(), 'paypal_pending_orders', orderID))
+    }
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('PayPal capture-order:', error)

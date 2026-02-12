@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
@@ -21,10 +21,27 @@ const SUBSCRIPTION_PRICE = Number(process.env.NEXT_PUBLIC_SUBSCRIPTION_PRICE) ||
 
 export default function ChoosePlanPage() {
   const router = useRouter()
-  const { user, checkAuth } = useAuth(false)
+  const { user, loading, checkAuth } = useAuth(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscriptionSaving, setSubscriptionSaving] = useState(false)
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (loading || !user) return
+    const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
+    if (isPremium) {
+      router.replace('/dashboard')
+    }
+  }, [user, loading, router])
+
+  const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
+  if (loading || (user && isPremium)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <p className="text-gray-600">Cargando...</p>
+      </div>
+    )
+  }
 
   const handleChooseFree = () => {
     router.push('/download-app')
@@ -136,6 +153,10 @@ export default function ChoosePlanPage() {
               <li className="flex items-center gap-2 text-gray-700">
                 <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
                 Publica tus animales en venta
+              </li>
+              <li className="flex items-center gap-2 text-gray-700">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                Más almacenamiento para fotos y documentos
               </li>
               <li className="flex items-center gap-2 text-gray-700">
                 <Check className="h-5 w-5 text-green-600 flex-shrink-0" />

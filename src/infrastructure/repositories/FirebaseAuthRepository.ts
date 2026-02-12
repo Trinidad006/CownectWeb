@@ -75,6 +75,8 @@ export class FirebaseAuthRepository implements AuthRepository {
         rancho_direccion: data.rancho_direccion,
         rancho_descripcion: data.rancho_descripcion,
         moneda: data.moneda,
+        plan: 'gratuito',
+        suscripcion_activa: false,
       }
 
       return { user, error: null }
@@ -114,6 +116,9 @@ export class FirebaseAuthRepository implements AuthRepository {
         rancho_direccion: profile?.rancho_direccion,
         rancho_descripcion: profile?.rancho_descripcion,
         moneda: profile?.moneda,
+        plan: profile?.plan || 'gratuito',
+        suscripcion_activa: profile?.suscripcion_activa || false,
+        suscripcion_fecha: profile?.suscripcion_fecha,
       }
 
       return { user, error: null }
@@ -157,6 +162,9 @@ export class FirebaseAuthRepository implements AuthRepository {
         rancho_direccion: profile?.rancho_direccion,
         rancho_descripcion: profile?.rancho_descripcion,
         moneda: profile?.moneda,
+        plan: profile?.plan || 'gratuito',
+        suscripcion_activa: profile?.suscripcion_activa || false,
+        suscripcion_fecha: profile?.suscripcion_fecha,
       }
     } catch (error) {
       return null
