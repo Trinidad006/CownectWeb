@@ -124,12 +124,50 @@ function AnimalesContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user?.id) return
+    
     try {
+      // Normalizar número de identificación (mayúsculas y trim)
+      const numeroIdentificacionNormalizado = formData.numero_identificacion 
+        ? formData.numero_identificacion.trim().toUpperCase() 
+        : ''
+
+      // Crear objeto animal temporal para validación
+      const animalTemporal: Animal = {
+        ...formData,
+        numero_identificacion: numeroIdentificacionNormalizado || undefined,
+        usuario_id: user.id,
+      } as Animal
+
+      // Validar animal completo usando el validador centralizado
+      const validacionCompleta = AnimalValidator.validarAnimalCompleto(animalTemporal, !!editingAnimal?.id)
+      
+      if (!validacionCompleta.valido) {
+        setErrorMessage(validacionCompleta.errores.join('. '))
+        setShowErrorModal(true)
+        return
+      }
+
+      // Verificar duplicados de número de identificación
+      if (numeroIdentificacionNormalizado) {
+        const animalExistente = await animalRepository.findByNumeroIdentificacion(
+          numeroIdentificacionNormalizado,
+          user.id,
+          editingAnimal?.id
+        )
+        
+        if (animalExistente) {
+          setErrorMessage('Ya existe un animal con este número de identificación')
+          setShowErrorModal(true)
+          return
+        }
+      }
+
       // Calcular si los documentos están completos
       const documentosCompletos = verificarDocumentosCompletos(formData as Animal)
       
       const animalData = {
         ...formData,
+        numero_identificacion: numeroIdentificacionNormalizado || undefined,
         documentos_completos: documentosCompletos,
       }
       
@@ -172,13 +210,50 @@ function AnimalesContent() {
     if (!user?.id) return
     
     try {
+      // Normalizar número de identificación (mayúsculas y trim)
+      const numeroIdentificacionNormalizado = criaFormData.numero_identificacion 
+        ? criaFormData.numero_identificacion.trim().toUpperCase() 
+        : ''
+
+      // Crear objeto animal temporal para validación
+      const criaTemporal: Animal = {
+        ...criaFormData,
+        numero_identificacion: numeroIdentificacionNormalizado || undefined,
+        estado: 'Cría',
+        usuario_id: user.id,
+        madre_id: criaFormData.madre_id,
+      } as Animal
+
+      // Validar cría completa usando el validador centralizado
+      const validacionCompleta = AnimalValidator.validarAnimalCompleto(criaTemporal, false)
+      
+      if (!validacionCompleta.valido) {
+        setErrorMessage(validacionCompleta.errores.join('. '))
+        setShowErrorModal(true)
+        return
+      }
+
+      // Verificar duplicados de número de identificación
+      if (numeroIdentificacionNormalizado) {
+        const animalExistente = await animalRepository.findByNumeroIdentificacion(
+          numeroIdentificacionNormalizado,
+          user.id
+        )
+        
+        if (animalExistente) {
+          setErrorMessage('Ya existe un animal con este número de identificación')
+          setShowErrorModal(true)
+          return
+        }
+      }
+
       // Buscar la madre
       const madre = animales.find(a => a.id === criaFormData.madre_id)
       
       // Validar madre
-      const validacion = AnimalValidator.validarMadre(madre, true)
-      if (!validacion.valido) {
-        setErrorMessage(validacion.error || 'Error al validar la madre')
+      const validacionMadre = AnimalValidator.validarMadre(madre, true)
+      if (!validacionMadre.valido) {
+        setErrorMessage(validacionMadre.error || 'Error al validar la madre')
         setShowErrorModal(true)
         return
       }
@@ -186,6 +261,7 @@ function AnimalesContent() {
       // Crear la cría
       await animalRepository.create({
         ...criaFormData,
+        numero_identificacion: numeroIdentificacionNormalizado || undefined,
         estado: 'Cría',
         usuario_id: user.id,
         madre_id: criaFormData.madre_id,

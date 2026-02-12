@@ -8,5 +8,6 @@ export interface AnimalRepository {
   delete(id: string, userId: string): Promise<void>
   getForSale(): Promise<Animal[]>
   markForSale(id: string, price: number, userId: string): Promise<void>
+  findByNumeroIdentificacion(numeroIdentificacion: string, userId: string, excludeId?: string): Promise<Animal | null>
 }
 

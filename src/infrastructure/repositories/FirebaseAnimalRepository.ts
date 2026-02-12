@@ -139,4 +139,22 @@ export class FirebaseAnimalRepository implements AnimalRepository {
       updated_at: new Date().toISOString(),
     })
   }
+
+  async findByNumeroIdentificacion(numeroIdentificacion: string, userId: string, excludeId?: string): Promise<Animal | null> {
+    if (!numeroIdentificacion || !numeroIdentificacion.trim()) {
+      return null
+    }
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, ANIMALES_COLLECTION),
+      where('usuario_id', '==', userId),
+      where('numero_identificacion', '==', numeroIdentificacion.trim())
+    )
+    const snapshot = await getDocs(q)
+    const found = snapshot.docs.find((d) => {
+      const animalId = d.id
+      return excludeId ? animalId !== excludeId : true
+    })
+    return found ? toAnimal(found.id, found.data()) : null
+  }
 }

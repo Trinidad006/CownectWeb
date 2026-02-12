@@ -12,6 +12,8 @@ import EstadisticasPanel from '../components/dashboard/EstadisticasPanel'
 import BackButton from '../components/ui/BackButton'
 import { EstadisticasCompletas } from '@/domain/entities/Estadisticas'
 import { Animal } from '@/domain/entities/Animal'
+import Link from 'next/link'
+import { CreditCard } from 'lucide-react'
 
 function DashboardContent() {
   const router = useRouter()
@@ -113,6 +115,27 @@ function DashboardContent() {
       <DashboardHeader />
       
       <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10 animate-contentFadeIn">
+        {/* Banner Premium - Solo si no es premium */}
+        {(!user?.plan || user?.plan !== 'premium') && !user?.suscripcion_activa && (
+          <div className="bg-gradient-to-r from-cownect-green to-cownect-dark-green rounded-lg shadow-2xl p-6 mb-6 relative overflow-hidden">
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex-1 text-center md:text-left">
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Contrata Nuestra App Premium</h2>
+                <p className="text-white text-lg opacity-90">
+                  Accede al Marketplace, compra y vende ganado con pagos seguros, y disfruta de todas las funcionalidades avanzadas
+                </p>
+              </div>
+              <Link
+                href="/choose-plan"
+                className="bg-white text-cownect-dark-green px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all flex items-center gap-2 shadow-lg whitespace-nowrap"
+              >
+                <CreditCard className="h-5 w-5" />
+                Ver Planes
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Accesos Rápidos */}
         <div className="bg-white rounded-lg shadow-2xl p-8 mb-6 relative">
           <div className="flex items-center gap-3 mb-4">

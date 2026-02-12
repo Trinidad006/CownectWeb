@@ -62,5 +62,84 @@ export class AnimalValidator {
     
     return { valido: true }
   }
+
+  /**
+   * Valida el formato del número de identificación SINIIGA
+   * Formato esperado: XXX-XXXXXX-XXXXX 
+   * - 3 letras mayúsculas (código de país, ej: MEX)
+   * - Guion
+   * - 6 dígitos numéricos
+   * - Guion  
+   * - 5 dígitos numéricos
+   * Ejemplo válido: MEX-123456-12345
+   */
+  static validarFormatoSINIIGA(numeroIdentificacion: string): { valido: boolean; error?: string } {
+    // Normalizar: convertir a mayúsculas y eliminar espacios
+    const numeroNormalizado = numeroIdentificacion.trim().toUpperCase()
+    
+    // Patrón SINIIGA: XXX-XXXXXX-XXXXX
+    const siniiigaPattern = /^[A-Z]{3}-[0-9]{6}-[0-9]{5}$/
+    
+    if (!siniiigaPattern.test(numeroNormalizado)) {
+      return {
+        valido: false,
+        error: 'El formato del arete SINIIGA es inválido. Debe ser: XXX-XXXXXX-XXXXX (ejemplo: MEX-123456-12345)'
+      }
+    }
+    
+    return { valido: true }
+  }
+
+  /**
+   * Valida el número de identificación completo:
+   * - Formato SINIIGA si se proporciona
+   * - No puede estar vacío si se proporciona
+   * - Retorna resultado estructurado para mejor manejo de errores
+   */
+  static validarNumeroIdentificacion(numeroIdentificacion: string | undefined): { valido: boolean; error?: string } {
+    // Si no se proporciona, es válido (es opcional)
+    if (!numeroIdentificacion || !numeroIdentificacion.trim()) {
+      return { valido: true }
+    }
+    
+    const numeroTrimmed = numeroIdentificacion.trim()
+    
+    // No puede estar vacío después de trim
+    if (numeroTrimmed.length === 0) {
+      return { valido: false, error: 'El número de identificación no puede estar vacío' }
+    }
+    
+    // Validar formato SINIIGA (obligatorio si se proporciona)
+    const validacionFormato = this.validarFormatoSINIIGA(numeroTrimmed)
+    if (!validacionFormato.valido) {
+      return validacionFormato
+    }
+    
+    return { valido: true }
+  }
+
+  /**
+   * Valida un animal completo antes de crear o actualizar
+   * Retorna resultado estructurado con todos los errores encontrados
+   */
+  static validarAnimalCompleto(animal: Animal, esEdicion: boolean = false): { valido: boolean; errores: string[] } {
+    const errores: string[] = []
+    
+    // Validar número de identificación
+    if (animal.numero_identificacion) {
+      const validacionId = this.validarNumeroIdentificacion(animal.numero_identificacion)
+      if (!validacionId.valido && validacionId.error) {
+        errores.push(validacionId.error)
+      }
+    }
+    
+    // Aquí se pueden agregar más validaciones en el futuro
+    // Por ejemplo: validar fecha de nacimiento, especie, etc.
+    
+    return {
+      valido: errores.length === 0,
+      errores
+    }
+  }
 }
 
