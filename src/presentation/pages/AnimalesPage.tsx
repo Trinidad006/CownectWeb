@@ -42,6 +42,7 @@ function AnimalesContent() {
   const [successMessage, setSuccessMessage] = useState('')
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [isLimitError, setIsLimitError] = useState(false)
   const [criaFormData, setCriaFormData] = useState({
     nombre: '',
     numero_identificacion: '',
@@ -89,6 +90,19 @@ function AnimalesContent() {
     e.preventDefault()
     if (!user?.id) return
     try {
+      // Verificar límite de animales solo al crear (no al editar)
+      if (!editingAnimal?.id) {
+        const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
+        const animalesCount = animales.filter(animal => animal.estado_venta !== 'vendido').length
+        
+        if (animalesCount >= 250 && !isPremium) {
+          setIsLimitError(true)
+          setErrorMessage('Has alcanzado el límite de 250 animales registrados. Para registrar más animales, únete al plan Premium.')
+          setShowErrorModal(true)
+          return
+        }
+      }
+      
       // Calcular si los documentos están completos
       const documentosCompletos = verificarDocumentosCompletos(formData as Animal)
       
@@ -125,8 +139,10 @@ function AnimalesContent() {
       loadAnimales()
       setSuccessMessage(editingAnimal ? 'Animal actualizado exitosamente' : 'Animal registrado exitosamente')
       setShowSuccessModal(true)
+      setIsLimitError(false)
     } catch (error: any) {
       setErrorMessage('Error: ' + error.message)
+      setIsLimitError(false)
       setShowErrorModal(true)
     }
   }
@@ -136,6 +152,17 @@ function AnimalesContent() {
     if (!user?.id) return
     
     try {
+      // Verificar límite de animales
+      const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
+      const animalesCount = animales.filter(animal => animal.estado_venta !== 'vendido').length
+      
+      if (animalesCount >= 250 && !isPremium) {
+        setIsLimitError(true)
+        setErrorMessage('Has alcanzado el límite de 250 animales registrados. Para registrar más animales, únete al plan Premium.')
+        setShowErrorModal(true)
+        return
+      }
+      
       // Buscar la madre
       const madre = animales.find(a => a.id === criaFormData.madre_id)
       
@@ -143,6 +170,7 @@ function AnimalesContent() {
       const validacion = AnimalValidator.validarMadre(madre, true)
       if (!validacion.valido) {
         setErrorMessage(validacion.error || 'Error al validar la madre')
+        setIsLimitError(false)
         setShowErrorModal(true)
         return
       }
@@ -168,8 +196,10 @@ function AnimalesContent() {
       loadAnimales()
       setSuccessMessage('Cría registrada exitosamente')
       setShowSuccessModal(true)
+      setIsLimitError(false)
     } catch (error: any) {
       setErrorMessage('Error: ' + error.message)
+      setIsLimitError(false)
       setShowErrorModal(true)
     }
   }
@@ -1169,17 +1199,34 @@ function AnimalesContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4 animate-fadeIn" style={{ position: 'fixed', zIndex: 9999 }}>
           <div className="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full animate-scaleIn relative" style={{ zIndex: 10000 }}>
             <div className="flex items-center gap-3 mb-4">
-              <BackButton onClick={() => { setShowErrorModal(false); setErrorMessage('') }} inline />
+              <BackButton onClick={() => { setShowErrorModal(false); setErrorMessage(''); setIsLimitError(false) }} inline />
               <h3 className="text-xl font-bold text-red-600">Error</h3>
             </div>
             <p className="text-gray-700 mb-6">{errorMessage}</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => { setShowErrorModal(false); setErrorMessage('') }}
-                className="flex-1 bg-gray-400 text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-gray-500 transition-all"
-              >
-                Cerrar
-              </button>
+              {isLimitError ? (
+                <>
+                  <button
+                    onClick={() => { setShowErrorModal(false); setErrorMessage(''); setIsLimitError(false) }}
+                    className="flex-1 bg-gray-400 text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-gray-500 transition-all"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    onClick={() => { router.push('/choose-plan'); setShowErrorModal(false); setErrorMessage(''); setIsLimitError(false) }}
+                    className="flex-1 bg-cownect-green text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-cownect-dark-green transition-all"
+                  >
+                    Ver Planes Premium
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => { setShowErrorModal(false); setErrorMessage(''); setIsLimitError(false) }}
+                  className="flex-1 bg-gray-400 text-white px-4 py-3 rounded-lg font-bold text-base hover:bg-gray-500 transition-all"
+                >
+                  Cerrar
+                </button>
+              )}
             </div>
           </div>
         </div>
