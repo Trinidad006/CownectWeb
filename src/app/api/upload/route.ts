@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       requestBody: { role: 'reader', type: 'anyone' },
     })
 
-    const url = `https://drive.google.com/uc?export=view&id=${fileId}`
+    const url = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`
     return NextResponse.json({ url, fileId })
   } catch (error: any) {
     console.error('Error subiendo a Drive:', error)

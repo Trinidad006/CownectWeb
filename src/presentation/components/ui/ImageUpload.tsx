@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { getDriveImageUrl } from '@/utils/driveImage'
 
 interface ImageUploadProps {
   label: string
@@ -27,7 +28,7 @@ export default function ImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setPreview(value || null)
+    setPreview(value ? getDriveImageUrl(value) : null)
   }, [value])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,9 +71,10 @@ export default function ImageUpload({
         throw new Error(data.error || 'Error al subir la imagen')
       }
 
-      const downloadURL = data.url
-      setPreview(downloadURL)
-      onChange(downloadURL)
+      const storedUrl = data.url
+      const displayUrl = getDriveImageUrl(storedUrl)
+      setPreview(displayUrl)
+      onChange(displayUrl)
       setError(null)
     } catch (err: any) {
       setError(err?.message || 'Error al subir la imagen')
