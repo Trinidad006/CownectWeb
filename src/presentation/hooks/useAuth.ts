@@ -59,6 +59,9 @@ export function useAuth(redirectToLogin = true) {
           moneda: profile?.moneda,
           plan: profile?.plan || 'gratuito',
           suscripcion_activa: profile?.suscripcion_activa || false,
+          suscripcion_fecha: profile?.suscripcion_fecha,
+          almacenamiento_usado_bytes: profile?.almacenamiento_usado_bytes,
+          almacenamiento_limite_bytes: profile?.almacenamiento_limite_bytes,
         }
 
         setUser(userData)
@@ -108,6 +111,9 @@ export function useAuth(redirectToLogin = true) {
       moneda: profile?.moneda,
       plan: profile?.plan || 'gratuito',
       suscripcion_activa: profile?.suscripcion_activa || false,
+      suscripcion_fecha: profile?.suscripcion_fecha,
+      almacenamiento_usado_bytes: profile?.almacenamiento_usado_bytes,
+      almacenamiento_limite_bytes: profile?.almacenamiento_limite_bytes,
     })
     setIsAuthenticated(true)
   }

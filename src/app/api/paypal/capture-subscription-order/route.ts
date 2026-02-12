@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { doc, getDoc, deleteDoc, setDoc } from 'firebase/firestore'
 import { getFirebaseDb } from '@/infrastructure/config/firebase'
+import { getFirebaseAdminDb, hasAdminCredentials } from '@/infrastructure/config/firebaseAdmin'
 
 const PAYPAL_API = process.env.PAYPAL_SANDBOX === 'true'
   ? 'https://api-m.sandbox.paypal.com'
@@ -33,13 +34,23 @@ export async function POST(request: NextRequest) {
     if (!orderID) {
       return NextResponse.json({ error: 'Falta orderID' }, { status: 400 })
     }
-    const db = getFirebaseDb()
-    const pendingRef = doc(db, 'paypal_pending_subscriptions', orderID)
-    const pendingSnap = await getDoc(pendingRef)
-    if (!pendingSnap.exists()) {
-      return NextResponse.json({ error: 'Orden no encontrada o ya usada' }, { status: 404 })
+    let userId: string
+    if (hasAdminCredentials()) {
+      const db = getFirebaseAdminDb()
+      const pendingSnap = await db.collection('paypal_pending_subscriptions').doc(orderID).get()
+      if (!pendingSnap.exists) {
+        return NextResponse.json({ error: 'Orden no encontrada o ya usada' }, { status: 404 })
+      }
+      userId = pendingSnap.data()?.userId
+    } else {
+      const db = getFirebaseDb()
+      const pendingRef = doc(db, 'paypal_pending_subscriptions', orderID)
+      const pendingSnap = await getDoc(pendingRef)
+      if (!pendingSnap.exists()) {
+        return NextResponse.json({ error: 'Orden no encontrada o ya usada' }, { status: 404 })
+      }
+      userId = pendingSnap.data()?.userId
     }
-    const { userId } = pendingSnap.data()
     if (!userId) {
       return NextResponse.json({ error: 'Datos de la orden inválidos' }, { status: 400 })
     }
@@ -58,13 +69,16 @@ export async function POST(request: NextRequest) {
         { status: captureRes.status }
       )
     }
-    const userRef = doc(db, 'usuarios', userId)
-    await setDoc(userRef, {
-      plan: 'premium',
-      suscripcion_activa: true,
-      suscripcion_fecha: new Date().toISOString(),
-    }, { merge: true })
-    await deleteDoc(pendingRef)
+    const userData = { plan: 'premium', suscripcion_activa: true, suscripcion_fecha: new Date().toISOString() }
+    if (hasAdminCredentials()) {
+      const db = getFirebaseAdminDb()
+      await db.collection('usuarios').doc(userId).set(userData, { merge: true })
+      await db.collection('paypal_pending_subscriptions').doc(orderID).delete()
+    } else {
+      const db = getFirebaseDb()
+      await setDoc(doc(db, 'usuarios', userId), userData, { merge: true })
+      await deleteDoc(doc(db, 'paypal_pending_subscriptions', orderID))
+    }
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
     console.error('PayPal capture-subscription-order:', error)

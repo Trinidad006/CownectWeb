@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { doc, setDoc } from 'firebase/firestore'
 import { getFirebaseDb } from '@/infrastructure/config/firebase'
+import { getFirebaseAdminDb, hasAdminCredentials } from '@/infrastructure/config/firebaseAdmin'
 
 const PAYPAL_API = process.env.PAYPAL_SANDBOX === 'true'
   ? 'https://api-m.sandbox.paypal.com'
@@ -66,13 +67,14 @@ export async function POST(request: NextRequest) {
     if (!orderID) {
       return NextResponse.json({ error: 'PayPal no devolvió order ID' }, { status: 500 })
     }
-    const db = getFirebaseDb()
-    await setDoc(doc(db, 'paypal_pending_subscriptions', orderID), {
-      userId,
-      amount: value,
-      currency: SUBSCRIPTION_CURRENCY,
-      createdAt: new Date().toISOString(),
-    })
+    const data = { userId, amount: value, currency: SUBSCRIPTION_CURRENCY, createdAt: new Date().toISOString() }
+    if (hasAdminCredentials()) {
+      const db = getFirebaseAdminDb()
+      await db.collection('paypal_pending_subscriptions').doc(orderID).set(data)
+    } else {
+      const db = getFirebaseDb()
+      await setDoc(doc(db, 'paypal_pending_subscriptions', orderID), data)
+    }
     return NextResponse.json({ orderID })
   } catch (error: unknown) {
     console.error('PayPal create-subscription-order:', error)

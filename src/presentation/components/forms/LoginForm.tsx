@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
-import { getFirebaseAuth } from '@/infrastructure/config/firebase'
+import { doc, getDoc } from 'firebase/firestore'
+import { getFirebaseAuth, getFirebaseDb } from '@/infrastructure/config/firebase'
 import Input from '../ui/Input'
 import Link from 'next/link'
 
@@ -20,10 +21,14 @@ export default function LoginForm() {
 
   useEffect(() => {
     const registered = searchParams.get('registered')
+    const reset = searchParams.get('reset')
+    
     if (registered === 'verify') {
       setSuccess('Cuenta creada. Revisa tu correo y haz clic en el enlace de verificación para activar tu cuenta. Luego inicia sesión.')
     } else if (registered === 'true') {
       setSuccess('Registro exitoso. Por favor inicia sesión.')
+    } else if (reset === 'success') {
+      setSuccess('Contraseña restablecida exitosamente. Ahora puedes iniciar sesión con tu nueva contraseña.')
     }
   }, [searchParams])
 
@@ -47,8 +52,13 @@ export default function LoginForm() {
         return
       }
 
+      const db = getFirebaseDb()
+      const profileSnap = await getDoc(doc(db, 'usuarios', firebaseUser.uid))
+      const profile = profileSnap.data()
+      const isPremium = profile?.plan === 'premium' || profile?.suscripcion_activa
+
       await new Promise(resolve => setTimeout(resolve, 300))
-      window.location.href = '/choose-plan'
+      window.location.href = isPremium ? '/dashboard' : '/choose-plan'
     } catch (err: any) {
       let errorMessage = 'Error al iniciar sesión. Verifique su conexión.'
       if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {

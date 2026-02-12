@@ -14,6 +14,9 @@ export interface User {
   foto_perfil?: string // URL de la imagen de perfil
   plan?: 'gratuito' | 'premium'
   suscripcion_activa?: boolean
+  suscripcion_fecha?: string
+  almacenamiento_usado_bytes?: number
+  almacenamiento_limite_bytes?: number
   created_at?: string
   updated_at?: string
 }

@@ -31,6 +31,7 @@ export async function getCurrentUser(): Promise<{
   moneda?: string
   plan?: 'gratuito' | 'premium'
   suscripcion_activa?: boolean
+  suscripcion_fecha?: string
 } | null> {
   try {
     const auth = getFirebaseAuth()
@@ -56,6 +57,7 @@ export async function getCurrentUser(): Promise<{
       moneda: profile?.moneda,
       plan: profile?.plan || 'gratuito',
       suscripcion_activa: profile?.suscripcion_activa || false,
+      suscripcion_fecha: profile?.suscripcion_fecha,
     }
   } catch (error) {
     return null

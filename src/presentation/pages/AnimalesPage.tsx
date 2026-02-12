@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Animal } from '@/domain/entities/Animal'
 import { useAuth } from '../hooks/useAuth'
@@ -43,6 +43,8 @@ function AnimalesContent() {
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [isLimitError, setIsLimitError] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
+  const [filtroAnimal, setFiltroAnimal] = useState('')
   const [criaFormData, setCriaFormData] = useState({
     nombre: '',
     numero_identificacion: '',
@@ -85,6 +87,40 @@ function AnimalesContent() {
       setLoading(false)
     }
   }
+
+  // Filtrar animales según búsqueda y filtro
+  const animalesFiltrados = useMemo(() => {
+    let filtrados = animales
+
+    // Filtro por animal específico (si se necesita)
+    if (filtroAnimal) {
+      filtrados = filtrados.filter((animal) => animal.id === filtroAnimal)
+    }
+
+    // Búsqueda por texto
+    if (busqueda.trim()) {
+      const busquedaLower = busqueda.toLowerCase().trim()
+      filtrados = filtrados.filter((animal) => {
+        const nombre = (animal.nombre || '').toLowerCase()
+        const numeroIdentificacion = (animal.numero_identificacion || '').toLowerCase()
+        const especie = (animal.especie || '').toLowerCase()
+        const raza = (animal.raza || '').toLowerCase()
+        const estado = (animal.estado || '').toLowerCase()
+        const sexo = animal.sexo === 'M' ? 'macho' : 'hembra'
+
+        return (
+          nombre.includes(busquedaLower) ||
+          numeroIdentificacion.includes(busquedaLower) ||
+          especie.includes(busquedaLower) ||
+          raza.includes(busquedaLower) ||
+          estado.includes(busquedaLower) ||
+          sexo.includes(busquedaLower)
+        )
+      })
+    }
+
+    return filtrados
+  }, [animales, busqueda, filtroAnimal])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -359,6 +395,60 @@ function AnimalesContent() {
             <h2 className="text-2xl font-bold text-black mb-4">Gestión de Animales</h2>
           </div>
 
+          {/* Barra de búsqueda y filtros */}
+          <div className="mb-8 space-y-6">
+            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Buscador */}
+                <div className="flex-1">
+                  <label className="block text-lg font-semibold text-gray-700 mb-3">Buscar Animales</label>
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre, ID, especie, raza, estado o sexo..."
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green focus:ring-2 focus:ring-cownect-green focus:ring-opacity-20 transition-all bg-white text-black"
+                  />
+                </div>
+                
+                {/* Filtro por animal */}
+                <div className="lg:w-72">
+                  <label className="block text-lg font-semibold text-gray-700 mb-3">Filtrar por Animal</label>
+                  <select
+                    value={filtroAnimal}
+                    onChange={(e) => setFiltroAnimal(e.target.value)}
+                    className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green focus:ring-2 focus:ring-cownect-green focus:ring-opacity-20 transition-all bg-white text-black cursor-pointer"
+                  >
+                    <option value="">Todos los animales</option>
+                    {animales.map((animal) => (
+                      <option key={animal.id} value={animal.id}>
+                        {animal.nombre || animal.numero_identificacion || 'Sin nombre'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              {/* Mostrar resultados del filtro */}
+              {(filtroAnimal || busqueda) && (
+                <div className="mt-4 pt-4 border-t border-gray-300 flex items-center justify-between">
+                  <p className="text-base text-gray-600">
+                    Mostrando <strong className="text-black">{animalesFiltrados.length}</strong> de <strong className="text-black">{animales.length}</strong> animales
+                  </p>
+                  <button
+                    onClick={() => {
+                      setFiltroAnimal('')
+                      setBusqueda('')
+                    }}
+                    className="text-cownect-green hover:text-cownect-dark-green font-semibold underline"
+                  >
+                    Limpiar filtros
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="mb-6 flex gap-3 flex-wrap">
             <button
               onClick={() => {
@@ -562,7 +652,7 @@ function AnimalesContent() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {animales.map((animal) => (
+            {animalesFiltrados.map((animal) => (
               <div key={animal.id} className="bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
                 {animal.foto ? (
                   <div className={`mb-4 rounded-lg overflow-hidden ${animal.en_venta ? 'border-2 border-cownect-green' : 'border border-gray-300'}`}>
@@ -890,6 +980,12 @@ function AnimalesContent() {
           {animales.length === 0 && !loading && (
             <div className="text-center py-8">
               <p className="text-xl text-gray-700">No hay animales registrados</p>
+            </div>
+          )}
+
+          {animales.length > 0 && animalesFiltrados.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-xl text-gray-700">No se encontraron animales con los filtros aplicados</p>
             </div>
           )}
 

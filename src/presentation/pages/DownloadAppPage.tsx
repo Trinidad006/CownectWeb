@@ -8,7 +8,6 @@ import {
   Download,
   CheckCircle,
   Clock,
-  Monitor,
   Apple,
   AlertTriangle,
   Code,
@@ -104,8 +103,14 @@ export default function DownloadAppPage() {
           </p>
         </div>
 
-        {/* Plataformas disponibles */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Lanzamientos oficiales */}
+        <div className="bg-white rounded-2xl shadow-xl border border-black p-6 mb-10">
+          <div className="flex items-center gap-3 mb-6">
+            <Download className="h-7 w-7 text-black" />
+            <h2 className="text-2xl font-bold text-black">Lanzamientos oficiales</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Android - Disponible */}
           <div className="bg-white rounded-2xl shadow-2xl p-8 border-2 border-black hover:shadow-3xl transition-all">
             <div className="text-center mb-6">
@@ -140,28 +145,28 @@ export default function DownloadAppPage() {
             </button>
           </div>
 
-          {/* Windows - Próximamente */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-gray-300 opacity-75">
+          {/* Dashboard Web */}
+          <div className="bg-white rounded-2xl shadow-2xl p-8 border-2 border-black hover:shadow-3xl transition-all">
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-2xl mb-4">
-                <Monitor className="h-12 w-12 text-gray-500" />
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl mb-4">
+                <LayoutDashboard className="h-12 w-12 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-600 mb-2">Windows</h3>
-              <div className="inline-flex items-center gap-2 bg-gray-50 text-gray-600 px-4 py-2 rounded-full">
-                <Clock className="h-5 w-5" />
-                <span className="font-semibold">Próximamente</span>
+              <h3 className="text-2xl font-bold text-black mb-2">Dashboard Web</h3>
+              <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-semibold">Disponible</span>
               </div>
             </div>
-            <p className="text-gray-600 mb-6 text-center font-normal">
-              Estará disponible en las próximas semanas
+            <p className="text-gray-700 mb-6 text-center font-normal">
+              Accede al panel completo desde cualquier equipo con navegador.
             </p>
-            <button
-              disabled
-              className="w-full bg-gray-300 text-gray-600 py-4 rounded-xl text-lg font-bold cursor-not-allowed border border-gray-400 flex items-center justify-center gap-3"
+            <Link
+              href="/dashboard"
+              className="w-full bg-black text-white py-4 rounded-xl text-lg font-bold hover:bg-gray-800 transition-all shadow-xl border border-black flex items-center justify-center gap-3"
             >
-              <Clock className="h-5 w-5" />
-              Próximamente
-            </button>
+              <LayoutDashboard className="h-5 w-5" />
+              Abrir Dashboard Web
+            </Link>
           </div>
 
           {/* iOS - Próximamente */}
@@ -186,6 +191,7 @@ export default function DownloadAppPage() {
               <Clock className="h-5 w-5" />
               Próximamente
             </button>
+          </div>
           </div>
         </div>
 
