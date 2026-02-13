@@ -44,10 +44,8 @@ export function getFirebaseAuth(languageCode?: string): Auth {
     auth = getAuth(getFirebaseApp())
   }
   
-  // Configurar idioma si se proporciona
-  if (languageCode) {
-    auth.languageCode = languageCode
-  }
+  // Configurar idioma - por defecto español si no se proporciona
+  auth.languageCode = languageCode || 'es'
   
   return auth
 }
@@ -87,7 +85,7 @@ export function getLanguageCodeByCountry(countryCode: string): string {
     'FR': 'fr', // Francia
   }
   
-  return countryLanguageMap[countryCode.toUpperCase()] || 'en' // Por defecto inglés
+  return countryLanguageMap[countryCode.toUpperCase()] || 'es' // Por defecto español
 }
 
 export function getFirebaseDb(): Firestore {
