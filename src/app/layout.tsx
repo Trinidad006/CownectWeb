@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import '../presentation/styles/globals.css'
 
 export const metadata: Metadata = {
-  title: 'Cownect - Sistema de Gestión Ganadera',
+  title: 'Cownect - Herramienta de Gestión Ganadera',
   description: 'Plataforma profesional para la gestión integral de su explotación ganadera',
 }
 

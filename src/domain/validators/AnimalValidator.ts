@@ -39,6 +39,15 @@ export class AnimalValidator {
     )
   }
 
+  /**
+   * Valida el estado de documentación del animal
+   * Retorna 'completa' si todos los documentos están presentes, 'incompleta' en caso contrario
+   */
+  static validarEstadoDocumentacion(animal: Animal): 'completa' | 'incompleta' {
+    const documentosCompletos = this.validarDocumentosCompletos(animal)
+    return documentosCompletos ? 'completa' : 'incompleta'
+  }
+
   static validarMadre(madre: Animal | null | undefined, esCria: boolean): { valido: boolean; error?: string } {
     if (!esCria) {
       return { valido: true } // No es cría, no necesita madre

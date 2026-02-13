@@ -17,21 +17,22 @@ export default function StepItem({ number, title, description, details }: StepIt
   return (
     <>
       <div 
-        className="flex flex-col items-center text-center cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-xl p-6 rounded-lg border-2 border-transparent hover:border-cownect-green"
+        className="flex flex-col items-center text-center cursor-pointer transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl p-8 rounded-2xl border-2 border-white/30 hover:border-white/50 bg-white/80 backdrop-blur-lg hover:bg-white/90"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => setShowDetails(true)}
       >
-        <div className={`w-16 h-16 bg-black rounded-lg flex items-center justify-center mb-4 transition-all duration-300 ${isHovered ? 'bg-cownect-green scale-110' : ''}`}>
-          <span className="text-white text-2xl font-bold">{number}</span>
+        <div className={`w-20 h-20 bg-cownect-green rounded-xl flex items-center justify-center mb-6 transition-all duration-300 shadow-lg ${isHovered ? 'scale-110 bg-cownect-dark-green shadow-cownect-green/50' : ''}`}>
+          <span className="text-white text-3xl font-bold">{number}</span>
         </div>
-        <h3 className={`text-xl font-bold text-black mb-2 transition-colors duration-300 ${isHovered ? 'text-cownect-green' : ''}`}>
+        <h3 className={`text-xl md:text-2xl font-bold text-gray-900 mb-4 transition-colors duration-300 ${isHovered ? 'text-cownect-green' : ''}`}>
           {title}
         </h3>
-        <p className="text-gray-700">{description}</p>
+        <p className="text-gray-700 text-base leading-relaxed mb-4">{description}</p>
         {isHovered && (
-          <div className="mt-4 text-cownect-green font-semibold text-sm animate-pulse">
-            Haz clic para más detalles →
+          <div className="mt-4 text-cownect-green font-semibold text-sm flex items-center gap-2">
+            <span>Haz clic para más detalles</span>
+            <span>→</span>
           </div>
         )}
       </div>

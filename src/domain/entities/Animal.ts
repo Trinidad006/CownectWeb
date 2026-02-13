@@ -18,8 +18,12 @@ export interface Animal {
   documento_certificado_zoosanitario?: string // URL de la imagen
   documento_patente_fierro?: string // URL de la imagen
   documentos_completos?: boolean // true si tiene todos los documentos
+  estado_documentacion?: 'completa' | 'incompleta' // Estado de la documentación
   foto?: string // URL de la imagen del animal
   madre_id?: string // ID de la madre (para crías)
+  activo?: boolean // true si el animal está activo, false si está inactivo (muerto, robado, eliminado)
+  razon_inactivo?: string // Razón por la cual el animal fue marcado como inactivo (opcional)
+  fecha_inactivo?: string // Fecha en que se marcó como inactivo
   created_at?: string
   updated_at?: string
 }

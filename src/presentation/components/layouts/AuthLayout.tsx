@@ -31,7 +31,9 @@ export default function AuthLayout({
         <div className="bg-white rounded-lg shadow-2xl p-8">
           {/* Logo y título */}
           <div className="flex flex-col items-center mb-6">
-            <Logo />
+            <div className="w-20 h-20 md:w-24 md:h-24 flex-shrink-0">
+              <Logo />
+            </div>
             <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">
               Cownect
             </h1>

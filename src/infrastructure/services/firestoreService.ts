@@ -30,8 +30,10 @@ export const firestoreService = {
     )
     const snapshot = await getDocs(q)
     const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
-    list.sort((a: any, b: any) => (b.created_at || '').localeCompare(a.created_at || ''))
-    return list
+    // Filtrar solo animales activos (activo !== false)
+    const animalesActivos = list.filter((animal: any) => animal.activo !== false)
+    animalesActivos.sort((a: any, b: any) => (b.created_at || '').localeCompare(a.created_at || ''))
+    return animalesActivos
   },
 
   async getAnimalesEnVenta() {
@@ -336,10 +338,15 @@ export const firestoreService = {
       pesos.map(async (p: any) => {
         const animalSnap = await getDoc(doc(db, ANIMALES, p.animal_id))
         const animal = animalSnap.exists() ? animalSnap.data() : null
-        return { ...p, animales: animal ? { nombre: animal.nombre, numero_identificacion: animal.numero_identificacion } : null }
+        // Filtrar pesos de animales inactivos o eliminados
+        if (!animal || animal.activo === false) {
+          return null
+        }
+        return { ...p, animales: { nombre: animal.nombre, numero_identificacion: animal.numero_identificacion } }
       })
     )
-    return withAnimal
+    // Filtrar los null (animales inactivos)
+    return withAnimal.filter((p: any) => p !== null)
   },
 
   async getPesosByAnimal(animalId: string) {
@@ -379,10 +386,15 @@ export const firestoreService = {
       vacs.map(async (v: any) => {
         const animalSnap = await getDoc(doc(db, ANIMALES, v.animal_id))
         const animal = animalSnap.exists() ? animalSnap.data() : null
-        return { ...v, animales: animal ? { nombre: animal.nombre, numero_identificacion: animal.numero_identificacion } : null }
+        // Filtrar vacunaciones de animales inactivos o eliminados
+        if (!animal || animal.activo === false) {
+          return null
+        }
+        return { ...v, animales: { nombre: animal.nombre, numero_identificacion: animal.numero_identificacion } }
       })
     )
-    return withAnimal
+    // Filtrar los null (animales inactivos)
+    return withAnimal.filter((v: any) => v !== null)
   },
 
   async getVacunacionesByAnimal(animalId: string) {
@@ -419,7 +431,11 @@ export const firestoreService = {
 
   async updateAnimal(id: string, data: any) {
     const db = getFirebaseDb()
-    await updateDoc(doc(db, ANIMALES, id), { ...data, updated_at: new Date().toISOString() })
+    // Filtrar campos undefined para evitar errores en Firestore
+    const cleaned = Object.fromEntries(
+      Object.entries({ ...data, updated_at: new Date().toISOString() }).filter(([_, v]) => v !== undefined)
+    )
+    await updateDoc(doc(db, ANIMALES, id), cleaned)
   },
 
   async deleteAnimal(id: string, usuarioId: string) {

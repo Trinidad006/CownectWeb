@@ -36,6 +36,11 @@ function AnimalesContent() {
   })
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [animalToDelete, setAnimalToDelete] = useState<Animal | null>(null)
+  const [razonEliminacion, setRazonEliminacion] = useState('')
+  const [showEstadoModal, setShowEstadoModal] = useState(false)
+  const [animalEstadoCambiar, setAnimalEstadoCambiar] = useState<Animal | null>(null)
+  const [nuevoEstado, setNuevoEstado] = useState('')
+  const [razonEstado, setRazonEstado] = useState('')
   const [fotoAnimal, setFotoAnimal] = useState<string>('')
   const [showCriaModal, setShowCriaModal] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -78,8 +83,10 @@ function AnimalesContent() {
     if (!user?.id) return
     try {
       const data = await animalRepository.getAll(user.id)
-      // Filtrar animales vendidos
-      const animalesFiltrados = data.filter(animal => animal.estado_venta !== 'vendido')
+      // Filtrar animales activos (activo !== false) y no vendidos
+      const animalesFiltrados = data.filter(animal => 
+        animal.activo !== false && animal.estado_venta !== 'vendido'
+      )
       setAnimales(animalesFiltrados)
     } catch (error) {
       console.error('Error:', error)
@@ -334,12 +341,67 @@ function AnimalesContent() {
   const handleCambiarEstado = async (animal: Animal, nuevoEstado: string) => {
     if (!animal.id || !user?.id) return
     
+    // Si el nuevo estado es Muerto o Robado, mostrar modal para razón
+    if (nuevoEstado === 'Muerto' || nuevoEstado === 'Robado') {
+      setAnimalEstadoCambiar(animal)
+      setNuevoEstado(nuevoEstado)
+      setRazonEstado('')
+      setShowEstadoModal(true)
+      return
+    }
+    
+    // Si el nuevo estado es Activo, reactivar el animal
+    if (nuevoEstado === 'Activo') {
+      try {
+        await animalRepository.update(animal.id, {
+          estado: nuevoEstado,
+          activo: true,
+          razon_inactivo: undefined,
+          fecha_inactivo: undefined,
+          updated_at: new Date().toISOString(),
+        })
+        loadAnimales()
+        setSuccessMessage('Animal reactivado exitosamente')
+        setShowSuccessModal(true)
+        return
+      } catch (error: any) {
+        setErrorMessage('Error: ' + error.message)
+        setShowErrorModal(true)
+        return
+      }
+    }
+    
     try {
       await animalRepository.update(animal.id, {
         estado: nuevoEstado,
+        updated_at: new Date().toISOString(),
       })
       loadAnimales()
       setSuccessMessage(`Estado actualizado a ${nuevoEstado}`)
+      setShowSuccessModal(true)
+    } catch (error: any) {
+      setErrorMessage('Error: ' + error.message)
+      setShowErrorModal(true)
+    }
+  }
+
+  const confirmarCambioEstado = async () => {
+    if (!animalEstadoCambiar?.id || !user?.id) return
+    
+    try {
+      await animalRepository.update(animalEstadoCambiar.id, {
+        estado: nuevoEstado,
+        activo: false,
+        razon_inactivo: razonEstado.trim() || undefined,
+        fecha_inactivo: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      setShowEstadoModal(false)
+      setAnimalEstadoCambiar(null)
+      setNuevoEstado('')
+      setRazonEstado('')
+      loadAnimales()
+      setSuccessMessage(`Animal marcado como ${nuevoEstado} y desactivado exitosamente`)
       setShowSuccessModal(true)
     } catch (error: any) {
       setErrorMessage('Error: ' + error.message)
@@ -380,11 +442,18 @@ function AnimalesContent() {
   const confirmDelete = async () => {
     if (!animalToDelete?.id || !user?.id) return
     try {
-      await animalRepository.delete(animalToDelete.id, user.id)
+      // Marcar como inactivo en lugar de eliminar
+      await animalRepository.update(animalToDelete.id, {
+        activo: false,
+        razon_inactivo: razonEliminacion.trim() || undefined,
+        fecha_inactivo: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       setShowDeleteModal(false)
       setAnimalToDelete(null)
+      setRazonEliminacion('')
       loadAnimales()
-      setSuccessMessage('Animal eliminado exitosamente')
+      setSuccessMessage('Animal marcado como inactivo exitosamente')
       setShowSuccessModal(true)
     } catch (error: any) {
       setErrorMessage('Error: ' + error.message)
@@ -468,6 +537,14 @@ function AnimalesContent() {
           <div className="flex flex-col items-center mb-6">
             <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">Cownect</h1>
             <h2 className="text-2xl font-bold text-black mb-4">Gestión de Animales</h2>
+            <div className="flex gap-4 mt-4">
+              <button
+                onClick={() => router.push('/dashboard/animales/inactivos')}
+                className="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-700 transition-all"
+              >
+                Ver Animales Inactivos
+              </button>
+            </div>
           </div>
 
           {/* Barra de búsqueda y filtros */}
@@ -661,60 +738,26 @@ function AnimalesContent() {
                 </div>
               </div>
 
-              {/* Sección de Documentos para Venta */}
+              {/* Nota sobre Documentación */}
               <div className="mt-6 pt-6 border-t-2 border-gray-300">
-                <h4 className="text-xl font-bold text-black mb-4">Documentos Requeridos para Venta</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  Todos los documentos son obligatorios para poder vender el animal. Suba imágenes de cada documento.
-                </p>
-                <div className="space-y-4">
-                  <ImageUpload
-                    label="1. Guía de Tránsito"
-                    value={formData.documento_guia_transito}
-                    onChange={(url) => setFormData({ ...formData, documento_guia_transito: url })}
-                    required
-                  />
-                  <ImageUpload
-                    label="2. Factura de Venta"
-                    value={formData.documento_factura_venta}
-                    onChange={(url) => setFormData({ ...formData, documento_factura_venta: url })}
-                    required
-                  />
-                  <ImageUpload
-                    label="3. Certificado de Movilización (SINIIGA)"
-                    value={formData.documento_certificado_movilizacion}
-                    onChange={(url) => setFormData({ ...formData, documento_certificado_movilizacion: url })}
-                    required
-                  />
-                  <ImageUpload
-                    label="4. Certificado Zoosanitario"
-                    value={formData.documento_certificado_zoosanitario}
-                    onChange={(url) => setFormData({ ...formData, documento_certificado_zoosanitario: url })}
-                    required
-                  />
-                  <ImageUpload
-                    label="5. Patente de Fierro"
-                    value={formData.documento_patente_fierro}
-                    onChange={(url) => setFormData({ ...formData, documento_patente_fierro: url })}
-                    required
-                  />
-                  <ImageUpload
-                    label="6. Foto del Animal"
-                    value={formData.foto}
-                    onChange={(url) => setFormData({ ...formData, foto: url })}
-                    required
-                  />
+                <div className="bg-green-50 border border-green-300 rounded-lg p-4">
+                  <p className="text-green-800 font-semibold mb-2">
+                     Documentación del Animal
+                  </p>
+                  <p className="text-green-700 text-sm mb-3">
+                    La documentación del animal (documentos legales y foto) se gestiona desde la sección de Documentación. 
+                    Puede acceder desde el botón "Documentación" en la tarjeta del animal.
+                  </p>
+                  {editingAnimal && (
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/dashboard/documentacion?id=${editingAnimal.id}`)}
+                      className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all"
+                    >
+                      Ir a Documentación
+                    </button>
+                  )}
                 </div>
-                
-                {/* Indicador de documentos completos */}
-                {verificarDocumentosCompletos(formData as Animal) && (
-                  <div className="mt-4 bg-green-50 border-2 border-green-400 rounded-lg p-4">
-                    <p className="text-green-700 font-bold text-lg flex items-center gap-2">
-                      <span>✓</span>
-                      <span>Documentos Completos - Listo para Venta</span>
-                    </p>
-                  </div>
-                )}
               </div>
 
               <button
@@ -887,16 +930,16 @@ function AnimalesContent() {
                 )}
                 
                 {/* Indicador de documentos */}
-                {verificarDocumentosCompletos(animal) ? (
+                {animal.estado_documentacion === 'completa' ? (
                   <div className="mb-2 bg-green-50 border border-green-400 rounded-lg px-3 py-2">
                     <p className="text-green-700 font-semibold text-sm">
-                      Documentos Listos
+                      ✓ Documentación Completa
                     </p>
                   </div>
                 ) : (
-                  <div className="mb-2 bg-green-50 border border-green-400 rounded-lg px-3 py-2">
-                    <p className="text-green-700 font-semibold text-sm">
-                      Documentación en Proceso
+                  <div className="mb-2 bg-yellow-50 border border-yellow-400 rounded-lg px-3 py-2">
+                    <p className="text-yellow-700 font-semibold text-sm">
+                      ⚠ Documentación Incompleta
                     </p>
                   </div>
                 )}
@@ -977,8 +1020,8 @@ function AnimalesContent() {
                     </div>
                   )}
                   
-                  {/* Botón para reactivar si está muerto o robado */}
-                  {(animal.estado === 'Muerto' || animal.estado === 'Robado') && (
+                  {/* Botón para reactivar si está inactivo (muerto, robado o eliminado) */}
+                  {animal.activo === false && (
                     <button
                       onClick={() => handleCambiarEstado(animal, 'Activo')}
                       className="w-full bg-green-100 text-green-700 py-2 rounded-lg font-bold text-sm hover:bg-green-200 transition-all border-2 border-green-400"
@@ -1033,19 +1076,30 @@ function AnimalesContent() {
                       Poner en Venta
                     </button>
                   )}
-                  <div className="flex gap-2">
+                  <div className="space-y-2">
                     <button
-                      onClick={() => handleEdit(animal)}
-                      className="flex-1 bg-cownect-green text-white py-2 rounded-lg font-bold hover:bg-opacity-90 transition-all"
+                      onClick={() => router.push(`/dashboard/documentacion?id=${animal.id}`)}
+                      className="w-full bg-emerald-600 text-white py-2 rounded-lg font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
                     >
-                      Editar
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Documentación
                     </button>
-                    <button
-                      onClick={() => handleDelete(animal)}
-                      className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 transition-all"
-                    >
-                      Eliminar
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEdit(animal)}
+                        className="flex-1 bg-cownect-green text-white py-2 rounded-lg font-bold hover:bg-opacity-90 transition-all"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(animal)}
+                        className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 transition-all"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1319,21 +1373,92 @@ function AnimalesContent() {
               <p className="text-gray-700 mb-2">
                 <strong>Animal:</strong> {animalToDelete.nombre || animalToDelete.numero_identificacion || 'Animal'}
               </p>
-              <p className="text-gray-800 font-semibold">
-                ¿Está seguro de eliminar este animal? Esta acción no se puede deshacer.
+              <p className="text-gray-800 font-semibold mb-4">
+                El animal será marcado como inactivo y no aparecerá en la lista principal. Puede reactivarlo desde la sección de animales inactivos.
               </p>
+              <div>
+                <label className="block text-base font-bold text-black mb-2">
+                  Razón de inactivación (opcional)
+                </label>
+                <textarea
+                  value={razonEliminacion}
+                  onChange={(e) => setRazonEliminacion(e.target.value)}
+                  placeholder="Explique brevemente por qué se elimina este animal..."
+                  className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
+                  rows={3}
+                />
+              </div>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={confirmDelete}
                 className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-red-700 transition-all"
               >
-                Eliminar
+                Marcar como Inactivo
               </button>
               <button
                 onClick={() => {
                   setShowDeleteModal(false)
                   setAnimalToDelete(null)
+                }}
+                className="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold text-lg hover:bg-gray-500 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para cambio de estado a Muerto/Robado */}
+      {showEstadoModal && animalEstadoCambiar && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full animate-scaleIn relative">
+            <div className="flex items-center gap-3 mb-4">
+              <BackButton
+                onClick={() => { 
+                  setShowEstadoModal(false)
+                  setAnimalEstadoCambiar(null)
+                  setNuevoEstado('')
+                  setRazonEstado('')
+                }}
+                inline
+              />
+              <h3 className="text-2xl font-bold text-black">Marcar como {nuevoEstado}</h3>
+            </div>
+            <div className="mb-6">
+              <p className="text-gray-700 mb-2">
+                <strong>Animal:</strong> {animalEstadoCambiar.nombre || animalEstadoCambiar.numero_identificacion || 'Animal'}
+              </p>
+              <p className="text-gray-800 font-semibold mb-4">
+                El animal será marcado como <strong>{nuevoEstado}</strong> y no aparecerá en la lista principal. Puede reactivarlo desde la sección de animales inactivos.
+              </p>
+              <div>
+                <label className="block text-base font-bold text-black mb-2">
+                  Razón (opcional)
+                </label>
+                <textarea
+                  value={razonEstado}
+                  onChange={(e) => setRazonEstado(e.target.value)}
+                  placeholder={`Explique brevemente por qué se marca como ${nuevoEstado}...`}
+                  className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={confirmarCambioEstado}
+                className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-red-700 transition-all"
+              >
+                Confirmar
+              </button>
+              <button
+                onClick={() => {
+                  setShowEstadoModal(false)
+                  setAnimalEstadoCambiar(null)
+                  setNuevoEstado('')
+                  setRazonEstado('')
                 }}
                 className="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold text-lg hover:bg-gray-500 transition-all"
               >

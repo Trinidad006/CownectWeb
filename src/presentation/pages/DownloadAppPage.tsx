@@ -145,13 +145,13 @@ export default function DownloadAppPage() {
             </button>
           </div>
 
-          {/* Dashboard Web */}
+          {/* Versión Web */}
           <div className="bg-white rounded-2xl shadow-2xl p-8 border-2 border-black hover:shadow-3xl transition-all">
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl mb-4">
                 <LayoutDashboard className="h-12 w-12 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-bold text-black mb-2">Dashboard Web</h3>
+              <h3 className="text-2xl font-bold text-black mb-2">Versión Web</h3>
               <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full">
                 <CheckCircle className="h-5 w-5" />
                 <span className="font-semibold">Disponible</span>
@@ -165,7 +165,7 @@ export default function DownloadAppPage() {
               className="w-full bg-black text-white py-4 rounded-xl text-lg font-bold hover:bg-gray-800 transition-all shadow-xl border border-black flex items-center justify-center gap-3"
             >
               <LayoutDashboard className="h-5 w-5" />
-              Abrir Dashboard Web
+              Abrir Versión Web
             </Link>
           </div>
 

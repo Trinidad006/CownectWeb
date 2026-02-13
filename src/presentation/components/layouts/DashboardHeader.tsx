@@ -121,12 +121,14 @@ export default function DashboardHeader() {
   }
 
   return (
-    <header className="bg-white shadow-md relative z-40" style={{ position: 'relative', zIndex: 40 }}>
-      <div className="container mx-auto px-4 py-4 max-w-7xl">
+    <header className="bg-white/80 backdrop-blur-lg border-b border-white/20 shadow-sm relative z-40" style={{ position: 'relative', zIndex: 40 }}>
+      <div className="container mx-auto px-4 py-2 max-w-7xl">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Logo />
-            <h1 className="text-2xl font-serif font-bold text-black hidden md:block">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 md:w-12 md:h-12 flex-shrink-0">
+              <Logo />
+            </div>
+            <h1 className="text-xl md:text-2xl font-serif font-bold text-black hidden md:block">
               Cownect
             </h1>
           </div>
@@ -134,37 +136,34 @@ export default function DashboardHeader() {
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="flex items-center gap-3 bg-gray-50 hover:bg-gray-100 rounded-lg px-4 py-2 transition-all"
+              className="flex items-center gap-2 bg-white/60 backdrop-blur-sm hover:bg-white/80 rounded-lg px-3 py-1.5 transition-all border border-white/30 shadow-sm"
             >
               {user?.foto_perfil ? (
-                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-cownect-green">
+                <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-cownect-green">
                   <Image
                     src={user.foto_perfil}
                     alt="Foto de perfil"
-                    width={40}
-                    height={40}
+                    width={32}
+                    height={32}
                     className="w-full h-full object-cover"
                   />
                 </div>
               ) : (
-                <div className="w-10 h-10 bg-cownect-green rounded-full flex items-center justify-center text-white font-bold text-lg">
+                <div className="w-8 h-8 bg-cownect-green rounded-full flex items-center justify-center text-white font-bold text-sm">
                   {iniciales}
                 </div>
               )}
               <div className="hidden md:block text-left">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-black">{nombreCompleto}</p>
-                  {(user?.plan === 'premium' || user?.suscripcion_activa) && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-cownect-green/20 text-cownect-green">
-                      <Zap className="w-3 h-3" />
-                      Premium
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-600">{user?.email}</p>
+                <p className="text-sm font-semibold text-black leading-tight">{nombreCompleto}</p>
+                {(user?.plan === 'premium' || user?.suscripcion_activa) && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold bg-cownect-green/20 text-cownect-green">
+                    <Zap className="w-3 h-3" />
+                    Premium
+                  </span>
+                )}
               </div>
               <svg
-                className={`w-5 h-5 text-gray-600 transition-transform ${showMenu ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 text-gray-600 transition-transform ${showMenu ? 'rotate-180' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

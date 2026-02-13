@@ -100,9 +100,16 @@ export default function ImageUpload({
       {preview ? (
         <div className="relative">
           <img
-            src={preview}
+            src={getDriveImageUrl(preview)}
             alt={label}
             className="w-full h-48 object-contain border-2 border-gray-300 rounded-lg mb-2 bg-gray-50"
+            onError={(e) => {
+              // Si falla la conversión, intentar con la URL original
+              const target = e.target as HTMLImageElement
+              if (target.src !== preview) {
+                target.src = preview
+              }
+            }}
           />
           <button
             type="button"

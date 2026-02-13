@@ -23,11 +23,14 @@ const steps = [
 
 export default function HowItWorksSection() {
   return (
-    <div className="bg-white rounded-lg shadow-lg p-8 mt-6">
-      <h2 className="text-2xl font-bold text-black text-center mb-6 pb-2 border-b border-gray-300">
-        ¿Cómo Funciona?
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl p-8 md:p-12 lg:p-16 border-2 border-white/30">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          ¿Cómo Funciona?
+        </h2>
+        <div className="w-24 h-1 bg-cownect-green mx-auto rounded-full"></div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
         {steps.map((step) => (
           <StepItem
             key={step.number}

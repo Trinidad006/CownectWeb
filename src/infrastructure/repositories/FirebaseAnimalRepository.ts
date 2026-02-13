@@ -36,8 +36,12 @@ function toAnimal(id: string, data: any): Animal {
     documento_certificado_zoosanitario: data.documento_certificado_zoosanitario,
     documento_patente_fierro: data.documento_patente_fierro,
     documentos_completos: data.documentos_completos ?? false,
+    estado_documentacion: data.estado_documentacion,
     foto: data.foto,
     madre_id: data.madre_id,
+    activo: data.activo !== undefined ? data.activo : true, // Por defecto activo
+    razon_inactivo: data.razon_inactivo,
+    fecha_inactivo: data.fecha_inactivo,
     created_at: data.created_at,
     updated_at: data.updated_at,
   }
@@ -75,6 +79,7 @@ export class FirebaseAnimalRepository implements AnimalRepository {
     const now = new Date().toISOString()
     const payload = {
       ...animal,
+      activo: animal.activo !== undefined ? animal.activo : true, // Por defecto activo
       created_at: now,
       updated_at: now,
     }
@@ -85,8 +90,11 @@ export class FirebaseAnimalRepository implements AnimalRepository {
   async update(id: string, animal: Partial<Animal>): Promise<Animal> {
     const db = getFirebaseDb()
     const ref = doc(db, ANIMALES_COLLECTION, id)
-    const updated = { ...animal, updated_at: new Date().toISOString() }
-    await updateDoc(ref, updated)
+    // Filtrar campos undefined para evitar errores en Firestore
+    const cleaned = Object.fromEntries(
+      Object.entries({ ...animal, updated_at: new Date().toISOString() }).filter(([_, v]) => v !== undefined)
+    )
+    await updateDoc(ref, cleaned)
     const snap = await getDoc(ref)
     return toAnimal(snap.id, snap.data()!)
   }

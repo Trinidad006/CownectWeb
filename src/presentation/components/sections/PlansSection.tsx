@@ -1,48 +1,28 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
   Check,
   X,
-  Store,
   Leaf,
-  Shield,
   Zap,
   ChevronRight,
   CreditCard,
 } from 'lucide-react'
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
-import { useAuth } from '../hooks/useAuth'
-import BackButton from '../components/ui/BackButton'
+import { useAuth } from '../../hooks/useAuth'
 
 const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || ''
 const SUBSCRIPTION_PRICE = Number(process.env.NEXT_PUBLIC_SUBSCRIPTION_PRICE) || 9.99
 
-export default function ChoosePlanPage() {
+export default function PlansSection() {
   const router = useRouter()
-  const { user, loading, checkAuth } = useAuth(false)
+  const { user, checkAuth } = useAuth(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscriptionSaving, setSubscriptionSaving] = useState(false)
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (loading || !user) return
-    const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
-    if (isPremium) {
-      router.replace('/dashboard')
-    }
-  }, [user, loading, router])
-
-  const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
-  if (loading || (user && isPremium)) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <p className="text-gray-600">Cargando...</p>
-      </div>
-    )
-  }
 
   const handleChooseFree = () => {
     router.push('/download-app')
@@ -56,16 +36,11 @@ export default function ChoosePlanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4">
+    <div className="py-12 px-4">
       <div className="container mx-auto max-w-4xl">
-        {/* Botón de regresar */}
-        <div className="mb-6">
-          <BackButton href="/dashboard" />
-        </div>
-        
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-black rounded-2xl shadow-xl overflow-hidden p-2 mb-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl overflow-hidden p-2 mb-6">
             <Image
               src="/images/logo_front.jpeg"
               alt="Cownect Logo"
@@ -174,7 +149,13 @@ export default function ChoosePlanPage() {
               </li>
             </ul>
             <button
-              onClick={() => setShowSubscriptionModal(true)}
+              onClick={() => {
+                if (!user?.id) {
+                  router.push('/login')
+                  return
+                }
+                setShowSubscriptionModal(true)
+              }}
               className="w-full bg-cownect-green text-white py-4 rounded-xl text-lg font-bold hover:bg-cownect-dark-green transition-all flex items-center justify-center gap-2 border-2 border-cownect-green"
             >
               <CreditCard className="h-5 w-5" />
@@ -206,7 +187,7 @@ export default function ChoosePlanPage() {
                 <h4 className="font-bold text-black mb-3">¿Por qué suscribirse?</h4>
                 <ul className="space-y-2 text-gray-700 text-sm">
                   <li className="flex items-center gap-2">
-                    <Store className="h-4 w-4 text-cownect-green" />
+                    <Zap className="h-4 w-4 text-cownect-green" />
                     <strong>Marketplace:</strong> Compra y vende ganado de forma segura
                   </li>
                   <li className="flex items-center gap-2">
@@ -214,7 +195,7 @@ export default function ChoosePlanPage() {
                     Pagos seguros con PayPal (tarjeta o cuenta PayPal)
                   </li>
                   <li className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-cownect-green" />
+                    <Check className="h-4 w-4 text-cownect-green" />
                     Protección en tus transacciones
                   </li>
                   <li className="flex items-center gap-2">
@@ -234,13 +215,15 @@ export default function ChoosePlanPage() {
                 </div>
               )}
 
-              {!user?.id ? (
-                <p className="text-gray-600 text-center py-4">Cargando...</p>
-              ) : paypalClientId ? (
+              {paypalClientId ? (
                 <PayPalScriptProvider options={{ clientId: paypalClientId, currency: 'USD', locale: 'es_ES' }}>
                   <PayPalButtons
                     style={{ layout: 'vertical' }}
                     createOrder={async () => {
+                      if (!user?.id) {
+                        router.push('/login')
+                        throw new Error('Debes iniciar sesión para contratar el plan')
+                      }
                       const res = await fetch('/api/paypal/create-subscription-order', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -289,3 +272,4 @@ export default function ChoosePlanPage() {
     </div>
   )
 }
+
