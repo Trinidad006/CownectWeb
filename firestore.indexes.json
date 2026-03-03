@@ -1,0 +1,56 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "eventos_animal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "animal_id", "order": "ASCENDING" },
+        { "fieldPath": "usuario_id", "order": "ASCENDING" },
+        { "fieldPath": "fecha_evento", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventos_animal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "animal_id", "order": "ASCENDING" },
+        { "fieldPath": "usuario_id", "order": "ASCENDING" },
+        { "fieldPath": "fecha_evento", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventos_animal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "animal_id", "order": "ASCENDING" },
+        { "fieldPath": "fecha_evento", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventos_animal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "animal_id", "order": "ASCENDING" },
+        { "fieldPath": "fecha_evento", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventos_animal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "usuario_id", "order": "ASCENDING" },
+        { "fieldPath": "fecha_evento", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eventos_animal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "animal_id", "order": "ASCENDING" },
+        { "fieldPath": "tipo_evento", "order": "ASCENDING" },
+        { "fieldPath": "fecha_evento", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
