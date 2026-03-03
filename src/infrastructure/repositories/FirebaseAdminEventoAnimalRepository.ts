@@ -21,6 +21,11 @@ function toEvento(id: string, data: Record<string, unknown>): EventoAnimal {
     madre_id: data.madre_id,
     cria_id: data.cria_id,
     created_at: data.created_at,
+    signos_celo: data.signos_celo,
+    examen_ovarico: data.examen_ovarico as EventoAnimal['examen_ovarico'],
+    tipo_servicio: data.tipo_servicio,
+    toro_id: data.toro_id,
+    pajilla_id: data.pajilla_id,
   }
 }
 
@@ -66,7 +71,7 @@ export class FirebaseAdminEventoAnimalRepository implements EventoAnimalReposito
   async create(evento: EventoAnimal): Promise<EventoAnimal> {
     const db = getFirebaseAdminDb()
     const now = new Date().toISOString()
-    const payload = {
+    const payload: Record<string, unknown> = {
       animal_id: evento.animal_id,
       tipo_evento: evento.tipo_evento,
       fecha_evento: evento.fecha_evento,
@@ -77,6 +82,11 @@ export class FirebaseAdminEventoAnimalRepository implements EventoAnimalReposito
       cria_id: evento.cria_id ?? null,
       created_at: now,
     }
+    if (evento.signos_celo != null) payload.signos_celo = evento.signos_celo
+    if (evento.examen_ovarico != null) payload.examen_ovarico = evento.examen_ovarico
+    if (evento.tipo_servicio != null) payload.tipo_servicio = evento.tipo_servicio
+    if (evento.toro_id != null) payload.toro_id = evento.toro_id
+    if (evento.pajilla_id != null) payload.pajilla_id = evento.pajilla_id
     const ref = await db.collection(EVENTOS_ANIMAL_COLLECTION).add(payload)
     return toEvento(ref.id, { ...payload, id: ref.id })
   }

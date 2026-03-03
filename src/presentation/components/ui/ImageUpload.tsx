@@ -68,7 +68,14 @@ export default function ImageUpload({
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Error al subir la imagen')
+        const isDriveNotConfigured =
+          res.status === 503 &&
+          (data.code === 'DRIVE_NOT_CONFIGURED' || (data.error && String(data.error).includes('GOOGLE_DRIVE')))
+        throw new Error(
+          isDriveNotConfigured
+            ? 'La subida de fotos no está configurada. Puedes guardar sin foto o configurar Google Drive (ver GOOGLE_DRIVE_SETUP.md en el proyecto).'
+            : data.error || 'Error al subir la imagen'
+        )
       }
 
       const storedUrl = data.url

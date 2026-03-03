@@ -13,6 +13,11 @@ type Body = {
   observaciones?: string
   madre_id?: string
   cria_id?: string
+  signos_celo?: string
+  examen_ovarico?: { conteo_folicular: number; cuerpo_luteo_presente: boolean; metodo: string }
+  tipo_servicio?: 'INSEMINACION' | 'MONTA_NATURAL'
+  toro_id?: string
+  pajilla_id?: string
 }
 
 function isValidTipoEvento(tipo: string): tipo is TipoEvento {
@@ -65,7 +70,21 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = (await request.json()) as Body
-    const { userId, animal_id, tipo_evento, fecha_evento, motivo_id, observaciones, madre_id, cria_id } = body
+    const {
+      userId,
+      animal_id,
+      tipo_evento,
+      fecha_evento,
+      motivo_id,
+      observaciones,
+      madre_id,
+      cria_id,
+      signos_celo,
+      examen_ovarico,
+      tipo_servicio,
+      toro_id,
+      pajilla_id,
+    } = body
 
     if (!userId || typeof userId !== 'string' || !userId.trim()) {
       return NextResponse.json({ error: 'Falta userId en el cuerpo de la petición.' }, { status: 400 })
@@ -116,6 +135,11 @@ export async function POST(request: NextRequest) {
       observaciones,
       madre_id,
       cria_id,
+      signos_celo,
+      examen_ovarico,
+      tipo_servicio,
+      toro_id,
+      pajilla_id,
     }
 
     const validator = new EventoTemporalValidator(repo)

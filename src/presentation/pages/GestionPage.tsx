@@ -863,6 +863,9 @@ function GestionContent() {
               {/* Acciones del animal */}
               <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
                 <button onClick={() => router.push(`/dashboard/eventos?id=${selectedAnimal.id}`)} className="bg-cownect-dark-green text-white px-4 py-2 rounded-lg font-bold hover:bg-opacity-90">Historial de eventos</button>
+                {selectedAnimal.sexo === 'H' && (
+                  <button onClick={() => router.push(`/dashboard/fertilidad?id=${selectedAnimal.id}`)} className="bg-rose-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-rose-700">Fertilidad y ciclo reproductivo</button>
+                )}
                 <button onClick={() => router.push(`/dashboard/documentacion?id=${selectedAnimal.id}`)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700">Documentación</button>
                 <button onClick={() => { setAnimalToDelete(selectedAnimal); setShowDeleteModal(true) }} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700">Marcar Inactivo</button>
                 {selectedAnimal.sexo === 'H' && (selectedAnimal.estado === 'Vaca Ordeña' || selectedAnimal.estado === 'Vaca Seca') && (

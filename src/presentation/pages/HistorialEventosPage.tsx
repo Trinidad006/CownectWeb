@@ -22,6 +22,7 @@ const eventoTemporalValidator = new EventoTemporalValidator(eventoRepository)
 
 const ETIQUETAS_TIPO: Record<TipoEvento, string> = {
   NACIMIENTO: 'Nacimiento',
+  CELO: 'Celo (Estro)',
   SERVICIO: 'Servicio',
   DIAGNOSTICO_GESTACION: 'Diagnóstico gestación',
   PARTO: 'Parto',
@@ -38,6 +39,8 @@ const ETIQUETAS_MOTIVO: Record<string, string> = {
   GEMELAR: 'Gemelar',
   DISTOCIA: 'Distocia',
   OTRO: 'Otro',
+  DETECTADO: 'Celo detectado',
+  OBSERVADO: 'Celo observado',
   MONTA_NATURAL: 'Monta natural',
   INSEMINACION: 'Inseminación',
   POSITIVO: 'Positivo',

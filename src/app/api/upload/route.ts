@@ -8,6 +8,7 @@ function getDriveClient() {
     return {
       error:
         'Falta GOOGLE_DRIVE_FOLDER_ID en .env.local. Asegúrate de que el archivo .env.local esté en la raíz del proyecto (junto a package.json), que la línea sea GOOGLE_DRIVE_FOLDER_ID=tu-id-sin-espacios y reinicia el servidor (npm run dev).',
+      code: 'DRIVE_NOT_CONFIGURED',
     }
   }
 
@@ -40,6 +41,7 @@ function getDriveClient() {
     return {
       error:
         'Configura Google Drive con OAuth (GOOGLE_DRIVE_REFRESH_TOKEN, CLIENT_ID, CLIENT_SECRET) o con cuenta de servicio (GOOGLE_DRIVE_SERVICE_ACCOUNT_PATH). Ver GOOGLE_DRIVE_SETUP.md',
+      code: 'DRIVE_NOT_CONFIGURED',
     }
   }
 
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
     const result = getDriveClient()
     if ('error' in result) {
       return NextResponse.json(
-        { error: result.error },
+        { error: result.error, code: result.code },
         { status: 503 }
       )
     }
