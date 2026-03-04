@@ -95,8 +95,8 @@ class _HeaderCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             user.isPremium
-                ? 'Tu plan premiun está activo. Registro de animales ilimitado.'
-                : 'Tu plan gratuito está listo. Mejora a premiun para animales ilimitados y más beneficios.',
+                ? 'Tu plan premium está activo. Registro de animales ilimitado.'
+                : 'Tu plan gratuito está listo. Mejora a premium para animales ilimitados y más beneficios.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.white70,
                 ),
@@ -111,7 +111,7 @@ class _HeaderCard extends StatelessWidget {
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
               ),
-            child: const Text('Ver planes premiun'),
+              child: const Text('Ver planes premium'),
             ),
         ],
       ),

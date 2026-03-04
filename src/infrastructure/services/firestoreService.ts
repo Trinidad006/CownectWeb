@@ -9,6 +9,7 @@ import {
   updateDoc,
   deleteDoc,
   runTransaction,
+  orderBy,
 } from 'firebase/firestore'
 import { getFirebaseDb } from '../config/firebase'
 
@@ -16,6 +17,9 @@ const ANIMALES = 'animales'
 const PESOS = 'pesos'
 const VACUNACIONES = 'vacunaciones'
 const USUARIOS = 'usuarios'
+const BUY_REQUESTS = 'buy_requests'
+const CHAT_MESSAGES = 'chat_messages'
+const DEALS = 'deals'
 const MARKETPLACE_COMPRAS = 'marketplace_compras'
 const MARKETPLACE_COMPRAS_DETALLE = 'marketplace_compras_detalle'
 const REVIEWS = 'reviews'
@@ -185,7 +189,7 @@ export const firestoreService = {
     await deleteDoc(ref)
   },
 
-  /** Registra compra (animal o marketplace). Si animalId === 'marketplace' solo se registra el pago. */
+  /** Registra compra (animal o marketplace). Mantener por compatibilidad histórica. */
   async comprarAnimal(animalId: string, compradorId: string) {
     if (animalId === 'marketplace') return
     const db = getFirebaseDb()
@@ -198,10 +202,154 @@ export const firestoreService = {
     })
   },
 
+  // --- Buy Requests & Chat (ventas entre ganaderos) ---
+
+  async createBuyRequest(params: {
+    fromUserId: string
+    toUserId: string
+    animalIds?: string[]
+    mensajeInicial: string
+  }) {
+    const db = getFirebaseDb()
+    const now = new Date().toISOString()
+    const raw = {
+      from_user_id: params.fromUserId,
+      to_user_id: params.toUserId,
+      animal_ids: params.animalIds ?? null,
+      mensaje_inicial: params.mensajeInicial,
+      estado: 'pending',
+      deal_id_onchain: null,
+      created_at: now,
+      updated_at: now,
+    }
+    const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined))
+    const ref = await addDoc(collection(db, BUY_REQUESTS), payload)
+    return ref.id
+  },
+
+  async getBuyRequestsForUser(usuarioId: string) {
+    const db = getFirebaseDb()
+    const col = collection(db, BUY_REQUESTS)
+
+    const [receivedSnap, sentSnap] = await Promise.all([
+      getDocs(
+        query(
+          col,
+          where('to_user_id', '==', usuarioId),
+          orderBy('created_at', 'desc')
+        )
+      ),
+      getDocs(
+        query(
+          col,
+          where('from_user_id', '==', usuarioId),
+          orderBy('created_at', 'desc')
+        )
+      ),
+    ])
+
+    const mapDoc = (d: any) => ({ id: d.id, ...d.data() })
+
+    return {
+      received: receivedSnap.docs.map(mapDoc),
+      sent: sentSnap.docs.map(mapDoc),
+    }
+  },
+
+  async updateBuyRequestEstado(id: string, estado: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed') {
+    const db = getFirebaseDb()
+    await updateDoc(doc(db, BUY_REQUESTS, id), {
+      estado,
+      updated_at: new Date().toISOString(),
+    })
+  },
+
+  async attachDealToBuyRequest(id: string, dealIdOnchain: string) {
+    const db = getFirebaseDb()
+    await updateDoc(doc(db, BUY_REQUESTS, id), {
+      deal_id_onchain: dealIdOnchain,
+      updated_at: new Date().toISOString(),
+    })
+  },
+
+  async addChatMessage(params: {
+    chatId: string
+    authorId: string
+    texto: string
+    attachmentUrls?: string[]
+  }) {
+    const db = getFirebaseDb()
+    const now = new Date().toISOString()
+    const raw = {
+      chat_id: params.chatId,
+      author_id: params.authorId,
+      texto: params.texto,
+      attachment_urls: params.attachmentUrls ?? null,
+      created_at: now,
+    }
+    const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined))
+    const ref = await addDoc(collection(db, CHAT_MESSAGES), payload)
+    return ref.id
+  },
+
+  async getChatMessages(chatId: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, CHAT_MESSAGES),
+      where('chat_id', '==', chatId),
+      orderBy('created_at', 'asc')
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+
+  // --- Deals (espejo off‑chain) ---
+
+  async createDealOffchain(params: {
+    dealIdOnchain: string
+    buyerId: string
+    sellerId: string
+    buyRequestId: string
+    price: number
+    currency: 'USDC' | string
+    state: 'pending' | 'paid' | 'completed' | 'cancelled'
+  }) {
+    const db = getFirebaseDb()
+    const now = new Date().toISOString()
+    const raw = {
+      deal_id_onchain: params.dealIdOnchain,
+      buyer_id: params.buyerId,
+      seller_id: params.sellerId,
+      buy_request_id: params.buyRequestId,
+      price: params.price,
+      currency: params.currency,
+      state: params.state,
+      created_at: now,
+      updated_at: now,
+    }
+    const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined))
+    await addDoc(collection(db, DEALS), payload)
+  },
+
+  async updateDealState(dealIdOnchain: string, state: 'pending' | 'paid' | 'completed' | 'cancelled') {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, DEALS),
+      where('deal_id_onchain', '==', dealIdOnchain)
+    )
+    const snap = await getDocs(q)
+    const batchUpdates = snap.docs.map((d) =>
+      updateDoc(d.ref, {
+        state,
+        updated_at: new Date().toISOString(),
+      })
+    )
+    await Promise.all(batchUpdates)
+  },
+
   /**
-   * Registra una compra de Marketplace en dos colecciones:
-   * - marketplace_compras (cabecera)
-   * - marketplace_compras_detalle (items)
+   * Registra una compra del antiguo Marketplace en dos colecciones.
+   * Se mantiene solo para histórico; el nuevo sistema de ventas usa buy_requests + deals.
    */
   async registrarCompraMarketplace(params: {
     compradorId: string

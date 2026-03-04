@@ -35,6 +35,10 @@ export default function DashboardHeader() {
     rancho_ciudad: '',
     rancho_direccion: '',
     rancho_descripcion: '',
+    perfil_publico: false,
+    descripcion_publica: '',
+    tipos_ganado: '',
+    wallet_address: '',
   })
 
   const handleLogout = async () => {
@@ -53,7 +57,7 @@ export default function DashboardHeader() {
 
   const almacenamientoTexto =
     user?.plan === 'premium' || user?.suscripcion_activa
-      ? 'Plan Premiun: más almacenamiento disponible'
+      ? 'Plan Premium: más almacenamiento disponible'
       : 'Plan Gratuito: almacenamiento base'
 
   const handleGuardarFotoPerfil = async () => {
@@ -85,6 +89,10 @@ export default function DashboardHeader() {
         rancho_ciudad: user.rancho_ciudad || '',
         rancho_direccion: user.rancho_direccion || '',
         rancho_descripcion: user.rancho_descripcion || '',
+        perfil_publico: user.perfil_publico ?? false,
+        descripcion_publica: user.descripcion_publica || '',
+        tipos_ganado: (user.tipos_ganado || []).join(', '),
+        wallet_address: user.wallet_address || '',
       })
       setShowEditarPerfilModal(true)
       setShowMenu(false)
@@ -106,6 +114,14 @@ export default function DashboardHeader() {
         rancho_ciudad: perfilData.rancho_ciudad.trim() || undefined,
         rancho_direccion: perfilData.rancho_direccion.trim() || undefined,
         rancho_descripcion: perfilData.rancho_descripcion.trim() || undefined,
+        perfil_publico: perfilData.perfil_publico,
+        descripcion_publica: perfilData.descripcion_publica.trim() || undefined,
+        tipos_ganado:
+          perfilData.tipos_ganado
+            .split(',')
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0) || undefined,
+        wallet_address: perfilData.wallet_address.trim() || undefined,
         moneda: info?.moneda,
       })
       await checkAuth()
@@ -158,7 +174,7 @@ export default function DashboardHeader() {
                 {(user?.plan === 'premium' || user?.suscripcion_activa) && (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold bg-cownect-green/20 text-cownect-green">
                     <Zap className="w-3 h-3" />
-                    Premiun
+                    Premium
                   </span>
                 )}
               </div>
@@ -197,7 +213,7 @@ export default function DashboardHeader() {
                         {(user?.plan === 'premium' || user?.suscripcion_activa) && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-cownect-green/20 text-cownect-green">
                             <Zap className="w-3 h-3" />
-                            Premiun
+                            Premium
                           </span>
                         )}
                       </div>
@@ -411,6 +427,66 @@ export default function DashboardHeader() {
                       className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="border-t-2 border-gray-300 pt-4 mt-4 space-y-4">
+                <h4 className="text-lg font-bold text-black mb-2">Perfil público para sistema de ventas</h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  Si activas el perfil público, otros ganaderos podrán ver la información básica de tu rancho y enviarte
+                  solicitudes de compra. Nunca se mostrará tu correo ni datos sensibles.
+                </p>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    id="perfil-publico"
+                    type="checkbox"
+                    checked={perfilData.perfil_publico}
+                    onChange={(e) => setPerfilData({ ...perfilData, perfil_publico: e.target.checked })}
+                    className="w-5 h-5 border-2 border-gray-300 rounded focus:outline-none focus:border-cownect-green"
+                  />
+                  <label htmlFor="perfil-publico" className="text-base font-semibold text-black">
+                    Hacer mi perfil visible para otros ganaderos (perfil público)
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-base font-bold text-black mb-2">Descripción pública</label>
+                  <textarea
+                    value={perfilData.descripcion_publica}
+                    onChange={(e) => setPerfilData({ ...perfilData, descripcion_publica: e.target.value })}
+                    rows={3}
+                    placeholder="Ej: Rancho especializado en bovino de carne y cría de novillos."
+                    className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-base font-bold text-black mb-2">Tipos de ganado</label>
+                  <input
+                    type="text"
+                    value={perfilData.tipos_ganado}
+                    onChange={(e) => setPerfilData({ ...perfilData, tipos_ganado: e.target.value })}
+                    placeholder="Ej: Bovino carne, Bovino leche, Doble propósito"
+                    className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Separa los tipos con comas. Esto ayuda a que otros ganaderos encuentren tu perfil.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-base font-bold text-black mb-2">Wallet (opcional)</label>
+                  <input
+                    type="text"
+                    value={perfilData.wallet_address}
+                    onChange={(e) => setPerfilData({ ...perfilData, wallet_address: e.target.value })}
+                    placeholder="Dirección de wallet para registrar deals en blockchain"
+                    className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green font-mono"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Puedes dejarlo vacío por ahora. Se usará más adelante para firmar acuerdos de venta en blockchain.
+                  </p>
                 </div>
               </div>
 

@@ -124,7 +124,7 @@ export default function ChoosePlanPage() {
             </button>
           </div>
 
-          {/* Plan Premiun */}
+          {/* Plan Premium */}
           <div className="bg-white rounded-2xl shadow-2xl p-8 border-2 border-cownect-green relative">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-cownect-green text-white px-4 py-1 rounded-full text-sm font-bold">
               Recomendado
@@ -133,7 +133,7 @@ export default function ChoosePlanPage() {
               <div className="w-12 h-12 bg-cownect-green/20 rounded-xl flex items-center justify-center">
                 <Zap className="h-6 w-6 text-cownect-green" />
               </div>
-              <h2 className="text-2xl font-bold text-black">Plan Premiun</h2>
+              <h2 className="text-2xl font-bold text-black">Plan Premium</h2>
             </div>
             <p className="text-3xl font-bold text-cownect-green mb-2">
               ${SUBSCRIPTION_PRICE}<span className="text-lg font-normal text-gray-500">/mes</span>
@@ -174,7 +174,7 @@ export default function ChoosePlanPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-black">Contratar Plan Premiun</h3>
+                <h3 className="text-2xl font-bold text-black">Contratar Plan Premium</h3>
                 <button
                   onClick={() => {
                     setShowSubscriptionModal(false)

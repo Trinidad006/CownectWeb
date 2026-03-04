@@ -103,7 +103,7 @@ class ChoosePlanScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 _PlanCard(
-                  title: 'Plan Premiun',
+                  title: 'Plan Premium',
                   price: AppConstants.subscriptionPrice.toStringAsFixed(2),
                   currency: AppConstants.subscriptionCurrency,
                   perks: const [

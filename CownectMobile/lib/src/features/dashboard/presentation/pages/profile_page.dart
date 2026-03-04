@@ -274,7 +274,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                user.isPremium ? 'Plan Premiun' : 'Plan Gratuito',
+                user.isPremium ? 'Plan Premium' : 'Plan Gratuito',
                 style: TextStyle(
                   color: user.isPremium ? const Color(0xFF15803D) : Colors.black87,
                   fontWeight: FontWeight.bold,
@@ -296,10 +296,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 leading: const Icon(Icons.workspace_premium),
                 title: Text(user.isPremium
                     ? 'Gestionar suscripción'
-                    : 'Obtener plan premiun'),
+                    : 'Obtener plan premium'),
                 subtitle: Text(
                   user.isPremium
-                      ? 'Tu plan premiun está activo'
+                      ? 'Tu plan premium está activo'
                       : 'Registro de animales ilimitados y más beneficios',
                 ),
                 onTap: () {

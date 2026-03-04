@@ -110,7 +110,7 @@ function DashboardContent() {
             <BackButton href="/" inline />
           </div>
           <h2 className="text-2xl font-bold text-black mb-6">Accesos Rápidos</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <button 
               onClick={() => router.push('/dashboard/gestion')}
               className="bg-gray-100 rounded-lg p-6 border-2 border-gray-300 hover:border-cownect-green hover:shadow-lg transition-all text-left"
@@ -119,11 +119,18 @@ function DashboardContent() {
               <p className="text-gray-700 text-sm">Animales, vacunaciones, control de peso y registros</p>
             </button>
             <button 
-              onClick={() => router.push('/dashboard/marketplace')}
+              onClick={() => router.push('/ranchos')}
               className="bg-gray-100 rounded-lg p-6 border-2 border-gray-300 hover:border-cownect-green hover:shadow-lg transition-all text-left"
             >
-              <h3 className="text-xl font-bold text-black mb-2">Marketplace</h3>
-              <p className="text-gray-700 text-sm">Ganado certificado por lote blockchain, carrito, PayPal y checklist WhatsApp</p>
+              <h3 className="text-xl font-bold text-black mb-2">Ganaderos</h3>
+              <p className="text-gray-700 text-sm">Ver perfiles públicos de ranchos y enviar buy requests</p>
+            </button>
+            <button 
+              onClick={() => router.push('/buy-requests')}
+              className="bg-gray-100 rounded-lg p-6 border-2 border-gray-300 hover:border-cownect-green hover:shadow-lg transition-all text-left"
+            >
+              <h3 className="text-xl font-bold text-black mb-2">Solicitudes de compra</h3>
+              <p className="text-gray-700 text-sm">Revisa las solicitudes recibidas y conversaciones</p>
             </button>
           </div>
         </div>

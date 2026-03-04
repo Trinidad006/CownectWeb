@@ -16,6 +16,12 @@ export interface User {
   rancho_descripcion?: string
   moneda?: string
   foto_perfil?: string // URL de la imagen de perfil
+  // Perfil público para sistema de ventas (visibilidad en directorio de ganaderos)
+  perfil_publico?: boolean
+  descripcion_publica?: string
+  tipos_ganado?: string[]
+  // Wallet opcional para registrar deals en blockchain
+  wallet_address?: string
   plan?: 'gratuito' | 'premium'
   suscripcion_activa?: boolean
   suscripcion_fecha?: string
