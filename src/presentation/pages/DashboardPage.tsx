@@ -52,8 +52,10 @@ function DashboardContent() {
       })
 
       const calcularEstadisticas = new CalcularEstadisticasUseCase()
-      const capacidadMaxima = user?.rancho_hectareas ? Math.floor((user.rancho_hectareas || 0) * 0.5) : 100
-      const estadisticasAvanzadas = calcularEstadisticas.execute(animales as Animal[], vacunaciones, pesos, capacidadMaxima)
+      // Premium: capacidad ilimitada (no se pasa límite)
+      const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
+      const capacidadMaxima = isPremium ? null : (user?.rancho_hectareas ? Math.floor((user.rancho_hectareas || 0) * 0.5) : 100)
+      const estadisticasAvanzadas = calcularEstadisticas.execute(animales as Animal[], vacunaciones, pesos, capacidadMaxima ?? undefined)
       setEstadisticasCompletas(estadisticasAvanzadas)
     } catch (error) {
       console.error('Error cargando datos:', error)

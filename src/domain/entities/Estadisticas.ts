@@ -38,7 +38,8 @@ export interface EstadisticasReproduccion {
 export interface EstadisticasInfraestructura {
   cargaAnimal: {
     actual: number
-    maxima: number
+    /** null = capacidad ilimitada (plan premium) */
+    maxima: number | null
     porcentaje: number
   }
   ocupacionGeneral: number // Porcentaje

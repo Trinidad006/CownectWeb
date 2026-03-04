@@ -6,7 +6,7 @@ export class CalcularEstadisticasUseCase {
     animales: Animal[],
     vacunaciones: any[],
     pesos: any[],
-    capacidadMaxima?: number
+    capacidadMaxima?: number | null
   ): EstadisticasCompletas {
     const inventario = this.calcularInventario(animales)
     const sanitarias = this.calcularSanitarias(animales, vacunaciones)
@@ -189,13 +189,25 @@ export class CalcularEstadisticasUseCase {
     }
   }
 
-  private calcularInfraestructura(animales: Animal[], capacidadMaxima?: number): EstadisticasInfraestructura {
+  private calcularInfraestructura(animales: Animal[], capacidadMaxima?: number | null): EstadisticasInfraestructura {
     const animalesActivos = animales.filter(a =>
       a.activo !== false &&
       a.estado?.toLowerCase() !== 'muerto'
     ).length
 
-    const capacidad = capacidadMaxima || 100 // Default si no se especifica
+    // Premium: capacidad ilimitada (null)
+    if (capacidadMaxima == null) {
+      return {
+        cargaAnimal: {
+          actual: animalesActivos,
+          maxima: null,
+          porcentaje: 0,
+        },
+        ocupacionGeneral: 0,
+      }
+    }
+
+    const capacidad = capacidadMaxima || 100
     const porcentaje = capacidad > 0 ? (animalesActivos / capacidad) * 100 : 0
 
     return {

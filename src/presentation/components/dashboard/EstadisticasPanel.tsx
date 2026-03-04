@@ -250,32 +250,38 @@ export default function EstadisticasPanel({ estadisticas, animales = [] }: Estad
         <h3 className="text-2xl font-bold text-black mb-4">Eficiencia de Infraestructura</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className={`rounded-lg p-4 border-2 ${getBgColorStatus(estadisticas.infraestructura.ocupacionGeneral, 70, 90)}`}>
+          <div className={`rounded-lg p-4 border-2 ${estadisticas.infraestructura.cargaAnimal.maxima == null ? 'bg-green-50 border-green-400' : getBgColorStatus(estadisticas.infraestructura.ocupacionGeneral, 70, 90)}`}>
             <p className="text-sm text-gray-600 mb-1">Carga Animal</p>
             <p className="text-2xl font-bold text-black">
-              {estadisticas.infraestructura.cargaAnimal.actual} / {estadisticas.infraestructura.cargaAnimal.maxima}
+              {estadisticas.infraestructura.cargaAnimal.actual} / {estadisticas.infraestructura.cargaAnimal.maxima == null ? 'Ilimitado' : estadisticas.infraestructura.cargaAnimal.maxima}
             </p>
-            <p className={`text-xl font-semibold ${getColorStatus(estadisticas.infraestructura.ocupacionGeneral, 70, 90)} mt-2`}>
-              {estadisticas.infraestructura.ocupacionGeneral.toFixed(1)}% Ocupación
-            </p>
-            <div className="mt-3 w-full bg-gray-200 rounded-full h-3">
-              <div
-                className={`h-3 rounded-full ${
-                  estadisticas.infraestructura.ocupacionGeneral >= 90
-                    ? 'bg-red-500'
-                    : estadisticas.infraestructura.ocupacionGeneral >= 70
-                    ? 'bg-yellow-500'
-                    : 'bg-green-500'
-                }`}
-                style={{ width: `${Math.min(estadisticas.infraestructura.ocupacionGeneral, 100)}%` }}
-              ></div>
-            </div>
+            {estadisticas.infraestructura.cargaAnimal.maxima != null ? (
+              <>
+                <p className={`text-xl font-semibold ${getColorStatus(estadisticas.infraestructura.ocupacionGeneral, 70, 90)} mt-2`}>
+                  {estadisticas.infraestructura.ocupacionGeneral.toFixed(1)}% Ocupación
+                </p>
+                <div className="mt-3 w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className={`h-3 rounded-full ${
+                      estadisticas.infraestructura.ocupacionGeneral >= 90
+                        ? 'bg-red-500'
+                        : estadisticas.infraestructura.ocupacionGeneral >= 70
+                        ? 'bg-yellow-500'
+                        : 'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.min(estadisticas.infraestructura.ocupacionGeneral, 100)}%` }}
+                  ></div>
+                </div>
+              </>
+            ) : (
+              <p className="text-xl font-semibold text-green-600 mt-2">Plan Premium: capacidad ilimitada</p>
+            )}
           </div>
 
           <div className="bg-gray-100 rounded-lg p-4 border-2 border-gray-300">
             <p className="text-sm text-gray-700 mb-1">Capacidad Máxima</p>
-            <p className="text-3xl font-bold text-black">{estadisticas.infraestructura.cargaAnimal.maxima}</p>
-            <p className="text-xs text-gray-600 mt-1">Animales recomendados</p>
+            <p className="text-3xl font-bold text-black">{estadisticas.infraestructura.cargaAnimal.maxima == null ? 'Ilimitado' : estadisticas.infraestructura.cargaAnimal.maxima}</p>
+            <p className="text-xs text-gray-600 mt-1">{estadisticas.infraestructura.cargaAnimal.maxima == null ? 'Plan Premium' : 'Animales recomendados'}</p>
           </div>
         </div>
       </div>
