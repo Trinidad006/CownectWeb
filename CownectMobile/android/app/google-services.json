@@ -1,0 +1,23 @@
+{
+  "project_info": {
+    "project_number": "694518951456",
+    "project_id": "cownect-6956b",
+    "storage_bucket": "cownect-6956b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:694518951456:android:4fddbe5589f64e6eb91645",
+        "android_client_info": {
+          "package_name": "com.cownect.app"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "AIzaSyAh8ZJJCC3mUX18nx__5MdmdVOnLkQURpY"
+        }
+      ]
+    }
+  ],
+  "configuration_version": "1"
+}
