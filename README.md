@@ -35,9 +35,6 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-## Imagen de Fondo
-
-Coloca la imagen de fondo con el nombre `fondo_verde.jpg` en la carpeta `public/` del proyecto.
 
 ## Tecnologías
 
