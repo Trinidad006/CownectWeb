@@ -7,7 +7,7 @@ import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { Animal } from '@/domain/entities/Animal'
 import ImageUpload from '../components/ui/ImageUpload'
 import DashboardHeader from '../components/layouts/DashboardHeader'
-import { AlertTriangle, Shield, Lock, XCircle, Upload } from 'lucide-react'
+import { AlertTriangle, Shield, Lock, XCircle, Upload, BadgeCheck, QrCode } from 'lucide-react'
 import { getFirebaseDb } from '@/infrastructure/config/firebase'
 import { doc, getDoc } from 'firebase/firestore'
 
@@ -23,6 +23,19 @@ export default function DocumentacionAnimalPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [declaracionAceptada, setDeclaracionAceptada] = useState(false)
+  const [certificados, setCertificados] = useState<any[]>([])
+  const [savingCert, setSavingCert] = useState(false)
+  const [certError, setCertError] = useState<string | null>(null)
+  const [certSuccess, setCertSuccess] = useState<string | null>(null)
+  const [certForm, setCertForm] = useState({
+    certificateId: '',
+    metadataUri: '',
+    txHash: '',
+  })
+  const [autoCertLoading, setAutoCertLoading] = useState(false)
+  const [adminPassword, setAdminPassword] = useState('')
+  const [adminValidateLoading, setAdminValidateLoading] = useState(false)
+  const [markReviewedLoading, setMarkReviewedLoading] = useState(false)
 
   // Documentos
   const [documentos, setDocumentos] = useState({
@@ -35,6 +48,10 @@ export default function DocumentacionAnimalPage() {
   // Foto del animal (separada de documentos)
   const [fotoAnimal, setFotoAnimal] = useState('')
 
+  const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
+  const hasCertificate = certificados.length > 0
+  const [isDocsLocked, setIsDocsLocked] = useState(false)
+
   useEffect(() => {
     if (authLoading) return
     if (!user) {
@@ -46,7 +63,19 @@ export default function DocumentacionAnimalPage() {
       return
     }
     loadAnimal()
+    loadCertificados()
   }, [user, authLoading, animalId, router])
+
+  // Bloqueo por sesión: si ya se guardó documentación de este animal en esta sesión,
+  // la próxima vez se muestra en solo lectura hasta que cierre sesión / pestaña.
+  useEffect(() => {
+    if (!animalId) return
+    if (typeof window === 'undefined') return
+    const key = `cownect_docs_locked_${animalId}`
+    if (window.sessionStorage.getItem(key) === '1') {
+      setIsDocsLocked(true)
+    }
+  }, [animalId])
 
   const loadAnimal = async () => {
     if (!animalId) return
@@ -86,7 +115,184 @@ export default function DocumentacionAnimalPage() {
     }
   }
 
+  const loadCertificados = async () => {
+    if (!animalId) return
+    try {
+      const res = await fetch(`/api/animal-certificates?animalId=${encodeURIComponent(animalId)}`)
+      if (!res.ok) return
+      const data = await res.json()
+      setCertificados(data.certificados || [])
+    } catch {
+      // si falla, simplemente no mostramos certificados
+    }
+  }
+
+  const handleRegisterCertificate = async () => {
+    if (!animalId || !user?.id) return
+    setCertError(null)
+    setCertSuccess(null)
+
+    if (!certForm.certificateId.trim() || !certForm.metadataUri.trim()) {
+      setCertError('ID de certificado y Metadata URI son requeridos')
+      return
+    }
+
+    try {
+      setSavingCert(true)
+      const res = await fetch('/api/animal-certificates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          animalId,
+          certificateIdOnchain: certForm.certificateId.trim(),
+          ownerWallet: user.wallet_address ?? null,
+          metadataUri: certForm.metadataUri.trim(),
+          txHash: certForm.txHash.trim() || undefined,
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCertError(data.error || 'Error al registrar el certificado')
+        return
+      }
+
+      setCertSuccess('Certificado registrado correctamente')
+      const newCert = {
+        id: data.id,
+        animal_id: animalId,
+        certificate_id_onchain: certForm.certificateId.trim(),
+        metadata_uri: certForm.metadataUri.trim(),
+        tx_hash: certForm.txHash.trim() || null,
+        owner_wallet: user.wallet_address ?? null,
+        created_at: new Date().toISOString(),
+      }
+      setCertificados((prev) => [newCert, ...prev])
+      setCertForm({ certificateId: '', metadataUri: '', txHash: '' })
+      await loadCertificados()
+    } catch (err: any) {
+      setCertError(err?.message || 'Error al registrar el certificado')
+    } finally {
+      setSavingCert(false)
+    }
+  }
+
+  const handleAutoCertificate = async () => {
+    if (!animalId || !user?.id) return
+    setCertError(null)
+    setCertSuccess(null)
+
+    try {
+      setAutoCertLoading(true)
+      const res = await fetch('/api/animal-certificates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          animalId,
+          auto: true,
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCertError(data.error || 'Error al generar el certificado en blockchain')
+        return
+      }
+
+      setCertSuccess('Certificado generado y vinculado correctamente')
+      await loadCertificados()
+    } catch (err: any) {
+      setCertError(err?.message || 'Error al generar el certificado')
+    } finally {
+      setAutoCertLoading(false)
+    }
+  }
+
+  const handleMarkReviewed = async () => {
+    if (!animalId || !user?.id) return
+    setCertError(null)
+    setCertSuccess(null)
+
+    if (!adminPassword.trim()) {
+      setCertError('Ingresa la contraseña de administrador')
+      return
+    }
+
+    const code = certForm.txHash.trim()
+    if (!code) {
+      setCertError('Ingresa el txHash del certificado (0x...)')
+      return
+    }
+
+    try {
+      setMarkReviewedLoading(true)
+      const res = await fetch('/api/animal-certificates/mark-reviewed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          animalId,
+          txHash: code,
+          adminPassword,
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCertError(data.error || 'Error al validar y marcar el animal')
+        return
+      }
+
+      setCertSuccess('Animal marcado como revisado para venta')
+      setCertForm((f) => ({ ...f, txHash: '' }))
+      await loadCertificados()
+      await loadAnimal()
+    } catch (err: any) {
+      setCertError(err?.message || 'Error al validar el txHash')
+    } finally {
+      setMarkReviewedLoading(false)
+    }
+  }
+
+  const handleAdminValidate = async () => {
+    if (!animalId) return
+    setCertError(null)
+    setCertSuccess(null)
+
+    if (!adminPassword.trim()) {
+      setCertError('Ingresa la contraseña de administrador')
+      return
+    }
+
+    try {
+      setAdminValidateLoading(true)
+      const res = await fetch('/api/animal-certificates/admin-validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          animalId,
+          adminPassword,
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCertError(data.error || 'Error al marcar revisado')
+        return
+      }
+
+      setCertSuccess('Animal marcado como revisado por administración')
+      await loadAnimal()
+    } catch (err: any) {
+      setCertError(err?.message || 'Error al marcar revisado')
+    } finally {
+      setAdminValidateLoading(false)
+    }
+  }
+
   const handleSave = async () => {
+    if (isDocsLocked) return
     if (!animalId || !user) return
     if (!declaracionAceptada) {
       setError('Debe aceptar la declaración jurada para continuar')
@@ -113,10 +319,17 @@ export default function DocumentacionAnimalPage() {
         estado_documentacion: documentosCompletos ? 'completa' : 'incompleta',
       })
 
-          setSuccess(true)
-          setTimeout(() => {
-            router.push('/dashboard/gestion')
-          }, 2000)
+      // Marcar documentación como bloqueada en esta sesión
+      if (typeof window !== 'undefined' && animalId) {
+        const key = `cownect_docs_locked_${animalId}`
+        window.sessionStorage.setItem(key, '1')
+      }
+      setIsDocsLocked(true)
+
+      setSuccess(true)
+      setTimeout(() => {
+        router.push('/dashboard/gestion')
+      }, 2000)
     } catch (err: any) {
       console.error('Error guardando documentos:', err)
       setError('Error al guardar los documentos: ' + err.message)
@@ -222,7 +435,178 @@ export default function DocumentacionAnimalPage() {
             Suba imágenes claras y legibles de cada documento. Todos los campos son opcionales, pero se recomienda completarlos para proceder con la venta.
           </p>
 
-          <div className="space-y-6 mb-8">
+          {isDocsLocked && (
+            <p className="text-xs text-gray-600 mb-6">
+              La documentación de este animal ya fue guardada en esta sesión. Estás viendo una{' '}
+              <span className="font-semibold">vista de solo lectura</span>. Para volver a editar,
+              cierra sesión e inicia nuevamente.
+            </p>
+          )}
+
+          {/* Certificados on‑chain (solo lectura) */}
+          {certificados.length > 0 && (
+            <div className="mb-8 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
+              <div className="flex items-start gap-3 mb-2">
+                <BadgeCheck className="h-5 w-5 text-emerald-700 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-bold text-emerald-900">
+                    Certificados en Blockchain
+                  </h3>
+                  <p className="text-xs text-emerald-800">
+                    Este animal cuenta con certificados registrados on‑chain. Los datos
+                    sensibles viven en la blockchain y aquí solo se muestra un resumen.
+                  </p>
+                </div>
+              </div>
+              <ul className="space-y-2 text-sm text-emerald-900">
+                {certificados.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex items-center justify-between rounded-lg bg-white/60 px-3 py-2 border border-emerald-200"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-semibold">
+                        Certificado Cownect #{c.cownect_certificate_id ?? c.id}
+                      </span>
+                      <span className="text-xs text-emerald-700">
+                        Emitido el {new Date(c.created_at).toLocaleString()}
+                      </span>
+                      {c.metadata_uri && (
+                        <a
+                          href={c.metadata_uri}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-cownect-green hover:underline mt-1"
+                        >
+                          Ver metadata (IPFS / JSON)
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 ml-4">
+                      {c.owner_wallet && (
+                        <span className="text-[11px] text-emerald-800 font-mono truncate max-w-[180px]">
+                          {c.owner_wallet}
+                        </span>
+                      )}
+                      {c.tx_hash && (
+                        <a
+                          href={`https://amoy.polygonscan.com/tx/${c.tx_hash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-cownect-green hover:underline"
+                        >
+                          Ver en blockchain
+                        </a>
+                      )}
+                      {typeof window !== 'undefined' && c.tx_hash && (
+                        <a
+                          href={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(
+                            `https://amoy.polygonscan.com/tx/${c.tx_hash}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-emerald-800 hover:underline"
+                        >
+                          <QrCode className="h-3 w-3" />
+                          Ver QR
+                        </a>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Certificados on‑chain: generación automática y registro manual */}
+          {isPremium && !hasCertificate && (
+            <div className="mb-8 rounded-xl border border-emerald-300 bg-emerald-50/70 p-4">
+              <div className="flex flex-col gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-emerald-900 flex items-center gap-2 mb-1">
+                    <BadgeCheck className="h-4 w-4 text-emerald-700" />
+                    Certificados en blockchain
+                  </h3>
+                  <p className="text-xs text-emerald-800">
+                    Solo puedes generar certificados si el animal fue validado/revisado por administración.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAutoCertificate}
+                  disabled={autoCertLoading || animal?.revisado_para_venta !== true}
+                  className="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {autoCertLoading ? 'Generando certificado...' : 'Generar certificado automáticamente'}
+                </button>
+
+                <div className="border-t border-emerald-200 pt-3 mt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div className="md:col-span-1">
+                      <label className="block text-xs font-semibold text-gray-800 mb-1">
+                        Contraseña de administrador
+                      </label>
+                      <input
+                        type="password"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        placeholder="••••••••"
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className="md:col-span-1 flex items-end">
+                      <button
+                        type="button"
+                        onClick={handleAdminValidate}
+                        disabled={adminValidateLoading}
+                        className="w-full inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 disabled:opacity-60"
+                      >
+                        {adminValidateLoading ? 'Marcando...' : 'Marcar revisado (sin txHash)'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-emerald-200 pt-3 mt-3">
+                    <label className="block text-xs font-semibold text-gray-800 mb-1">
+                      txHash (opcional, para vincular certificado existente)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="0x..."
+                      value={certForm.txHash}
+                      onChange={(e) => setCertForm((f) => ({ ...f, txHash: e.target.value }))}
+                    />
+
+                    <div className="mt-3 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleMarkReviewed}
+                        disabled={markReviewedLoading}
+                        className="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 disabled:opacity-60"
+                      >
+                        {markReviewedLoading ? 'Validando...' : 'Validar con txHash'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {certError && <p className="text-xs text-red-700 mb-2 mt-3">{certError}</p>}
+                  {certSuccess && <p className="text-xs text-emerald-700 mb-2 mt-3">{certSuccess}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isPremium && hasCertificate && (
+            <div className="mb-8 rounded-xl border border-emerald-300 bg-emerald-50/70 p-4">
+              <p className="text-xs text-emerald-900 font-semibold">
+                Este animal ya tiene un Certificado Cownect. No se pueden generar certificados adicionales.
+              </p>
+            </div>
+          )}
+
+          <div className={`space-y-6 mb-8 ${isDocsLocked ? 'pointer-events-none opacity-80' : ''}`}>
             <div>
               <ImageUpload
                 label="1. Guía de Movilización Interna (o de Tránsito)"
@@ -273,7 +657,7 @@ export default function DocumentacionAnimalPage() {
           </div>
 
           {/* Foto del Animal (separada) */}
-          <div className="mt-8 pt-8 border-t-2 border-gray-300">
+          <div className={`mt-8 pt-8 border-t-2 border-gray-300 ${isDocsLocked ? 'pointer-events-none opacity-80' : ''}`}>
             <h3 className="text-xl font-bold text-gray-900 mb-4">Foto del Animal</h3>
             <p className="text-gray-700 mb-4">
               Suba una foto clara del animal. Esta foto aparecerá en el inicio y en la ficha del animal.
@@ -287,7 +671,7 @@ export default function DocumentacionAnimalPage() {
           </div>
 
           {/* Checkbox de Declaración Jurada */}
-          <div className="mt-8 pt-8 border-t-2 border-gray-300">
+          <div className={`mt-8 pt-8 border-t-2 border-gray-300 ${isDocsLocked ? 'pointer-events-none opacity-60' : ''}`}>
             <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-300">
               <label className="flex items-start gap-4 cursor-pointer">
                 <input
@@ -310,6 +694,7 @@ export default function DocumentacionAnimalPage() {
           </div>
 
           {/* Botón de Guardar */}
+          {!isDocsLocked && (
           <div className="mt-8 flex items-center justify-between">
             <div className="flex items-center gap-2 text-gray-600">
               <Lock className="h-5 w-5" />
@@ -338,6 +723,7 @@ export default function DocumentacionAnimalPage() {
               )}
             </button>
           </div>
+          )}
 
           {/* Mensajes de Error y Éxito */}
           {error && (

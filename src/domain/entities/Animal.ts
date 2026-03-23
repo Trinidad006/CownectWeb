@@ -16,6 +16,9 @@ export interface Animal {
   documento_patente_fierro?: string // URL de la imagen
   documentos_completos?: boolean // true si tiene todos los documentos
   estado_documentacion?: 'completa' | 'incompleta' // Estado de la documentación
+  // Validación/revisión interna (solo administradores la establecen).
+  // Si true, el animal queda habilitado para generar certificado on-chain y/o venta.
+  revisado_para_venta?: boolean
   foto?: string // URL de la imagen del animal
   madre_id?: string // ID de la madre (para crías)
   observaciones?: string // Notas del animal (varias separadas por " · ")

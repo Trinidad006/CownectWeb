@@ -109,6 +109,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url, fileId })
   } catch (error: any) {
     console.error('Error subiendo a Drive:', error)
+    const rawMessage = String(error?.message || '')
+    const invalidGrant =
+      rawMessage.includes('invalid_grant') ||
+      String(error?.response?.data?.error || '').includes('invalid_grant')
+
+    if (invalidGrant) {
+      return NextResponse.json(
+        {
+          error:
+            'Google Drive devolvio invalid_grant. Tu refresh token caduco o fue revocado. Genera uno nuevo en /api/drive-auth y actualiza GOOGLE_DRIVE_REFRESH_TOKEN en .env.local. Si tu app OAuth esta en modo Testing, los refresh tokens pueden caducar en 7 dias.',
+          code: 'GOOGLE_DRIVE_INVALID_GRANT',
+        },
+        { status: 401 }
+      )
+    }
+
     return NextResponse.json(
       { error: error?.message || 'Error al subir el archivo' },
       { status: 500 }

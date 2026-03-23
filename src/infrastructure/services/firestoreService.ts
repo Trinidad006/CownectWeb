@@ -20,6 +20,7 @@ const USUARIOS = 'usuarios'
 const BUY_REQUESTS = 'buy_requests'
 const CHAT_MESSAGES = 'chat_messages'
 const DEALS = 'deals'
+const ANIMAL_CERTIFICATES = 'animal_certificates'
 const MARKETPLACE_COMPRAS = 'marketplace_compras'
 const MARKETPLACE_COMPRAS_DETALLE = 'marketplace_compras_detalle'
 const REVIEWS = 'reviews'
@@ -301,6 +302,56 @@ export const firestoreService = {
     )
     const snapshot = await getDocs(q)
     return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+
+  // --- Certificados de animales (espejo off‑chain del contrato AnimalCertificates) ---
+
+  async addAnimalCertificate(params: {
+    animalId: string
+    usuarioId: string
+    ownerWallet: string | null
+    certificateIdOnchain: string
+    metadataUri: string
+    txHash?: string | null
+  }) {
+    const db = getFirebaseDb()
+    const now = new Date().toISOString()
+    const raw = {
+      animal_id: params.animalId,
+      usuario_id: params.usuarioId,
+      owner_wallet: params.ownerWallet,
+      certificate_id_onchain: params.certificateIdOnchain,
+      metadata_uri: params.metadataUri,
+      tx_hash: params.txHash ?? null,
+      created_at: now,
+    }
+    const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined))
+    const ref = await addDoc(collection(db, ANIMAL_CERTIFICATES), payload)
+    return ref.id
+  },
+
+  async getAnimalCertificates(animalId: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, ANIMAL_CERTIFICATES),
+      where('animal_id', '==', animalId)
+    )
+    const snapshot = await getDocs(q)
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
+    list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    return list
+  },
+
+  async findAnimalCertificateByTxHash(txHash: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, ANIMAL_CERTIFICATES),
+      where('tx_hash', '==', txHash)
+    )
+    const snapshot = await getDocs(q)
+    if (snapshot.empty) return null
+    const doc = snapshot.docs[0]
+    return { id: doc.id, ...doc.data() }
   },
 
   // --- Deals (espejo off‑chain) ---
