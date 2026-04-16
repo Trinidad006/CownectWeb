@@ -9,6 +9,8 @@ import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { getFirebaseAuth, getFirebaseDb, getLanguageCodeByCountry } from '../config/firebase'
 import { AuthRepository, RegisterData, LoginData } from '@/domain/repositories/AuthRepository'
 import { User } from '@/domain/entities/User'
+import { FirebaseRanchoRepository } from './FirebaseRanchoRepository'
+import type { Rancho } from '@/domain/entities/Rancho'
 
 const USUARIOS_COLLECTION = 'usuarios'
 
@@ -31,9 +33,11 @@ export class FirebaseAuthRepository implements AuthRepository {
 
       const profile = {
         email: data.email,
-        rol: 'PROPIETARIO', // Todo el que se registra es dueño
-        plan: 'gratuito',
-        suscripcion_activa: false,
+        rol: (data as any).rol ?? 'PROPIETARIO', // Por defecto dueño, pero permite TRABAJADOR
+        id_rancho_jefe: (data as any).id_rancho_jefe ?? null,
+        pin_kiosko: (data as any).pin_kiosko ?? null,
+        plan: (data as any).plan ?? 'gratuito',
+        suscripcion_activa: (data as any).suscripcion_activa ?? false,
         nombre: data.nombre ?? null,
         apellido: data.apellido ?? null,
         telefono: data.telefono ?? null,
@@ -50,7 +54,34 @@ export class FirebaseAuthRepository implements AuthRepository {
         updated_at: new Date().toISOString(),
       }
 
-      await setDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid), profile)
+      const ranchoRepository = new FirebaseRanchoRepository()
+      let ranchoIds: string[] | undefined = (data as any).rancho_ids
+      let ranchoActualId: string | undefined = (data as any).rancho_actual_id
+
+      if (data.rancho && !ranchoActualId) {
+        const defaultRancho: Rancho = {
+          usuario_id: firebaseUser.uid,
+          nombre: data.rancho,
+          pais: data.rancho_pais,
+          ciudad: data.rancho_ciudad,
+          direccion: data.rancho_direccion,
+          descripcion: data.rancho_descripcion,
+          hectareas: data.rancho_hectareas,
+          tipos_ganado: [],
+          certificado_cownect: false,
+        }
+        const ranchoCreado = await ranchoRepository.create(defaultRancho)
+        ranchoIds = [ranchoCreado.id!]
+        ranchoActualId = ranchoCreado.id
+      }
+
+      const enhancedProfile = {
+        ...profile,
+        rancho_ids: ranchoIds,
+        rancho_actual_id: ranchoActualId,
+      }
+
+      await setDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid), enhancedProfile)
 
       // Asegurar que el idioma esté configurado antes de enviar el correo
       auth.languageCode = languageCode
@@ -73,6 +104,8 @@ export class FirebaseAuthRepository implements AuthRepository {
         apellido: data.apellido,
         telefono: data.telefono,
         rancho: data.rancho,
+        rancho_ids: ranchoIds,
+        rancho_actual_id: ranchoActualId,
         rancho_hectareas: data.rancho_hectareas,
         rancho_pais: data.rancho_pais,
         rancho_ciudad: data.rancho_ciudad,
@@ -119,6 +152,8 @@ export class FirebaseAuthRepository implements AuthRepository {
         apellido: profile?.apellido,
         telefono: profile?.telefono,
         rancho: profile?.rancho,
+        rancho_ids: profile?.rancho_ids,
+        rancho_actual_id: profile?.rancho_actual_id,
         rancho_hectareas: profile?.rancho_hectareas,
         rancho_pais: profile?.rancho_pais,
         rancho_ciudad: profile?.rancho_ciudad,
@@ -173,6 +208,8 @@ export class FirebaseAuthRepository implements AuthRepository {
         apellido: profile?.apellido,
         telefono: profile?.telefono,
         rancho: profile?.rancho,
+        rancho_ids: profile?.rancho_ids,
+        rancho_actual_id: profile?.rancho_actual_id,
         rancho_hectareas: profile?.rancho_hectareas,
         rancho_pais: profile?.rancho_pais,
         rancho_ciudad: profile?.rancho_ciudad,

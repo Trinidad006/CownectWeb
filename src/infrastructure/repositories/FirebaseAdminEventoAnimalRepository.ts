@@ -12,20 +12,20 @@ const EVENTOS_ANIMAL_COLLECTION = 'eventos_animal'
 function toEvento(id: string, data: Record<string, unknown>): EventoAnimal {
   return {
     id,
-    animal_id: data.animal_id,
+    animal_id: data.animal_id as string,
     tipo_evento: data.tipo_evento as TipoEvento,
-    fecha_evento: data.fecha_evento,
-    motivo_id: data.motivo_id,
-    usuario_id: data.usuario_id,
-    observaciones: data.observaciones,
-    madre_id: data.madre_id,
-    cria_id: data.cria_id,
-    created_at: data.created_at,
-    signos_celo: data.signos_celo,
+    fecha_evento: data.fecha_evento as string,
+    motivo_id: data.motivo_id as string | undefined,
+    usuario_id: data.usuario_id as string,
+    observaciones: data.observaciones as string | undefined,
+    madre_id: data.madre_id as string | undefined,
+    cria_id: data.cria_id as string | undefined,
+    created_at: data.created_at as string | undefined,
+    signos_celo: data.signos_celo as string | undefined,
     examen_ovarico: data.examen_ovarico as EventoAnimal['examen_ovarico'],
-    tipo_servicio: data.tipo_servicio,
-    toro_id: data.toro_id,
-    pajilla_id: data.pajilla_id,
+    tipo_servicio: data.tipo_servicio as 'INSEMINACION' | 'MONTA_NATURAL' | undefined,
+    toro_id: data.toro_id as string | undefined,
+    pajilla_id: data.pajilla_id as string | undefined,
   }
 }
 

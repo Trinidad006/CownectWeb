@@ -9,6 +9,8 @@ export interface User {
   apellido?: string
   telefono?: string
   rancho?: string
+  rancho_ids?: string[]
+  rancho_actual_id?: string
   rancho_hectareas?: number
   rancho_pais?: string
   rancho_ciudad?: string

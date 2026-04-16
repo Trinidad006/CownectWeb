@@ -23,9 +23,19 @@ const DEALS = 'deals'
 const MARKETPLACE_COMPRAS = 'marketplace_compras'
 const MARKETPLACE_COMPRAS_DETALLE = 'marketplace_compras_detalle'
 const REVIEWS = 'reviews'
+const PRODUCCION = 'producciones'
 const ADMIN_EMAIL = 'mufasaelrey13@gmail.com'
 
 export const firestoreService = {
+  async getProduccionByUser(usuarioId: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, PRODUCCION),
+      where('usuario_id', '==', usuarioId)
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
   async getAnimalesByUser(usuarioId: string) {
     const db = getFirebaseDb()
     const q = query(
@@ -88,12 +98,12 @@ export const firestoreService = {
     return withAnimal.filter((p: any) => p !== null)
   },
 
-  async getPesosByAnimal(animalId: string) {
+  async getPesosByAnimal(animalId: string, usuarioId?: string) {
     const db = getFirebaseDb()
-    const q = query(
-      collection(db, PESOS),
-      where('animal_id', '==', animalId)
-    )
+    const col = collection(db, PESOS)
+    const q = usuarioId
+      ? query(col, where('animal_id', '==', animalId), where('usuario_id', '==', usuarioId))
+      : query(col, where('animal_id', '==', animalId))
     const snapshot = await getDocs(q)
     const pesos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
     pesos.sort((a: any, b: any) => (b.fecha_registro || '').localeCompare(a.fecha_registro || ''))
@@ -107,11 +117,15 @@ export const firestoreService = {
     fecha_registro: string
     observaciones?: string
   }) {
+    if (!Number.isFinite(data.peso) || data.peso <= 0) {
+      throw new Error('El peso debe ser un número mayor que 0.')
+    }
     const db = getFirebaseDb()
     const now = new Date().toISOString()
     const raw = { ...data, created_at: now, updated_at: now }
     const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined))
-    await addDoc(collection(db, PESOS), payload)
+    const ref = await addDoc(collection(db, PESOS), payload)
+    return ref.id
   },
 
   async getVacunacionesByUser(usuarioId: string) {
@@ -138,12 +152,12 @@ export const firestoreService = {
     return withAnimal.filter((v: any) => v !== null)
   },
 
-  async getVacunacionesByAnimal(animalId: string) {
+  async getVacunacionesByAnimal(animalId: string, usuarioId?: string) {
     const db = getFirebaseDb()
-    const q = query(
-      collection(db, VACUNACIONES),
-      where('animal_id', '==', animalId)
-    )
+    const col = collection(db, VACUNACIONES)
+    const q = usuarioId
+      ? query(col, where('animal_id', '==', animalId), where('usuario_id', '==', usuarioId))
+      : query(col, where('animal_id', '==', animalId))
     const snapshot = await getDocs(q)
     const vacunaciones = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
     vacunaciones.sort((a: any, b: any) => (b.fecha_aplicacion || '').localeCompare(a.fecha_aplicacion || ''))
@@ -452,8 +466,119 @@ export const firestoreService = {
     })
   },
 
-  calcularAverageRating(totalStars: number, reviewCount: number): number {
+  async getEmpleadosByJefe(jefeId: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, USUARIOS),
+      where('id_rancho_jefe', '==', jefeId),
+      where('rol', '==', 'TRABAJADOR')
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+
+  async getHistorialClinicoByAnimal(animalId: string, usuarioId?: string) {
+    const db = getFirebaseDb()
+    const col = collection(db, 'registro_clinico')
+    const q = usuarioId
+      ? query(col, where('animal_id', '==', animalId), where('usuario_id', '==', usuarioId))
+      : query(col, where('animal_id', '==', animalId))
+    const snapshot = await getDocs(q)
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+    list.sort((a: any, b: any) => (b.fecha_registro || '').localeCompare(a.fecha_registro || ''))
+    return list
+  },
+
+  async getHistorialClinicoByUser(usuarioId: string) {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, 'registro_clinico'),
+      where('usuario_id', '==', usuarioId)
+    )
+    const snapshot = await getDocs(q)
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+    list.sort((a: any, b: any) => (b.fecha_registro || '').localeCompare(a.fecha_registro || ''))
+    return list
+  },
+
+  async calcularAverageRating(totalStars: number, reviewCount: number): Promise<number> {
     if (!reviewCount || reviewCount <= 0) return 0
     return totalStars / reviewCount
+  },
+
+  // ===== MÉTODOS DE RAZAS =====
+
+  async getAllRazas() {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, 'razas'),
+      where('activa', '==', true)
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+
+  async getRazasByAptitud(aptitud: 'Lechera' | 'Cárnica' | 'Doble Propósito') {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, 'razas'),
+      where('aptitud', '==', aptitud),
+      where('activa', '==', true)
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+
+  async getRazasByEspecie(especie: 'Bos taurus' | 'Bos indicus' | 'Sintética (F1)') {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, 'razas'),
+      where('especie', '==', especie),
+      where('activa', '==', true)
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+
+  async getRazaById(id: string) {
+    const db = getFirebaseDb()
+    const snap = await getDoc(doc(db, 'razas', id))
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null
+  },
+
+  async getRazasByClima(clima: 'Templado' | 'Tropical' | 'Tropical/Adaptado' | 'Variado') {
+    const db = getFirebaseDb()
+    const q = query(
+      collection(db, 'razas'),
+      where('clima_ideal', '==', clima),
+      where('activa', '==', true)
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  },
+
+  async getRecommendedRazas(
+    aptitud?: 'Lechera' | 'Cárnica' | 'Doble Propósito',
+    clima?: string
+  ) {
+    const db = getFirebaseDb()
+    let constraints = [where('activa', '==', true)]
+
+    if (aptitud) {
+      constraints.push(where('aptitud', '==', aptitud))
+    }
+
+    const q = query(collection(db, 'razas'), ...constraints)
+    const snapshot = await getDocs(q)
+    let razas = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+
+    // Filtrar por clima si se proporciona
+    if (clima) {
+      razas = razas.filter(
+        (r: any) => r.clima_ideal === clima || r.clima_ideal === 'Variado' || r.clima_ideal === 'Tropical/Adaptado'
+      )
+    }
+
+    return razas
   },
 }

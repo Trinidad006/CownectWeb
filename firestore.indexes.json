@@ -1,6 +1,22 @@
 {
   "indexes": [
     {
+      "collectionGroup": "pesos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "animal_id", "order": "ASCENDING" },
+        { "fieldPath": "usuario_id", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vacunaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "animal_id", "order": "ASCENDING" },
+        { "fieldPath": "usuario_id", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "eventos_animal",
       "queryScope": "COLLECTION",
       "fields": [
