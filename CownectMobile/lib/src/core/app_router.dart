@@ -11,6 +11,7 @@ import '../features/dashboard/presentation/pages/home_page.dart';
 import '../features/dashboard/presentation/pages/profile_page.dart';
 import '../features/dashboard/presentation/pages/vaccinations_page.dart';
 import '../features/dashboard/presentation/pages/weights_page.dart';
+import '../features/certificates/presentation/animal_documentation_page.dart';
 import '../features/onboarding/presentation/choose_plan_screen.dart';
 import '../features/splash/presentation/splash_screen.dart';
 
@@ -22,6 +23,7 @@ enum AppRoute {
   dashboard('/dashboard'),
   dashboardHome('home'),
   dashboardAnimals('animals'),
+  dashboardAnimalDocumentation('animal/:id/documentacion'),
   dashboardVaccinations('vaccinations'),
   dashboardWeights('weights'),
   dashboardProfile('profile');
@@ -85,6 +87,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: AppRoute.dashboardAnimals.path,
                     name: AppRoute.dashboardAnimals.name,
                     builder: (context, state) => const AnimalsPage(),
+                    routes: [
+                      GoRoute(
+                        path: AppRoute.dashboardAnimalDocumentation.path,
+                        name: AppRoute.dashboardAnimalDocumentation.name,
+                        builder: (context, state) {
+                          final animalId = state.pathParameters['id'] ?? '';
+                          return AnimalDocumentationPage(animalId: animalId);
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -125,12 +137,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 class RouterNotifier extends ChangeNotifier {
   RouterNotifier(this.ref) {
-    ref.listen(authStateChangesProvider, (_, __) => notifyListeners(), fireImmediately: true);
-    ref.listen(appUserStreamProvider, (_, __) => notifyListeners(), fireImmediately: true);
+    ref.listen(
+      authStateChangesProvider,
+      (_, __) => notifyListeners(),
+      fireImmediately: true,
+    );
+    ref.listen(
+      appUserStreamProvider,
+      (_, __) => notifyListeners(),
+      fireImmediately: true,
+    );
   }
 
   final Ref ref;
-  final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> rootNavigatorKey =
+      GlobalKey<NavigatorState>();
 
   String? handleRedirect(BuildContext context, GoRouterState state) {
     final auth = ref.read(authStateChangesProvider);
@@ -141,10 +162,14 @@ class RouterNotifier extends ChangeNotifier {
     final appUser = appUserAsync.valueOrNull;
     final userLoading = appUserAsync.isLoading;
 
-    final isSplash = state.uri.path == AppRoute.splash.path || state.matchedLocation == AppRoute.splash.path;
+    final isSplash =
+        state.uri.path == AppRoute.splash.path ||
+        state.matchedLocation == AppRoute.splash.path;
     final isAuthPath = state.matchedLocation.startsWith('/auth');
     final isChoosePlan = state.matchedLocation == AppRoute.choosePlan.path;
-    final isDashboard = state.matchedLocation.startsWith(AppRoute.dashboard.path);
+    final isDashboard = state.matchedLocation.startsWith(
+      AppRoute.dashboard.path,
+    );
 
     if (authLoading || userLoading) {
       return isSplash ? null : AppRoute.splash.path;
@@ -159,13 +184,8 @@ class RouterNotifier extends ChangeNotifier {
       return AppRoute.splash.path;
     }
 
-    if (!appUser.isPremium) {
-      if (isChoosePlan) return null;
-      if (!isAuthPath) {
-        return AppRoute.choosePlan.path;
-      }
-    }
-
+    // Eliminamos la redirección obligatoria a choosePlan para permitir el plan gratuito.
+    // Solo redirigimos si el usuario es premium y está en la pantalla de elegir plan (para sacarlo de ahí).
     if (appUser.isPremium && isChoosePlan) {
       return AppRoute.dashboard.path;
     }

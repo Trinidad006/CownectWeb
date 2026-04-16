@@ -267,7 +267,7 @@ class _VaccinationFormSheetState
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: _selectedAnimalId,
+                    initialValue: _selectedAnimalId,
                     items: animals
                         .map(
                           (animal) => DropdownMenuItem(

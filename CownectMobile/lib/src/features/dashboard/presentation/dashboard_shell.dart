@@ -45,7 +45,8 @@ class DashboardShell extends ConsumerWidget {
       bottomNavigationBar: NavigationBar(
         height: 72,
         selectedIndex: shell.currentIndex,
-        onDestinationSelected: (index) => shell.goBranch(index),
+        onDestinationSelected: (index) =>
+            shell.goBranch(index, initialLocation: index == shell.currentIndex),
         destinations: _destinations
             .map(
               (dest) => NavigationDestination(
@@ -57,7 +58,6 @@ class DashboardShell extends ConsumerWidget {
       ),
     );
   }
-
 }
 
 class _DashboardDestination {

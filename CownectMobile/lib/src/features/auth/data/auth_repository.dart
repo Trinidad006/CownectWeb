@@ -2,8 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../../core/constants.dart';
-import '../../../core/providers.dart';
 import '../domain/app_user.dart';
 
 class AuthRepository {
@@ -79,6 +77,11 @@ class AuthRepository {
       'rancho_direccion': request.ranchoDireccion,
       'rancho_descripcion': request.ranchoDescripcion,
       'moneda': request.moneda,
+      // Campos para perfil público (sistema de ventas)
+      'perfil_publico': false,
+      'descripcion_publica': null,
+      'tipos_ganado': null,
+      'wallet_address': null,
       'plan': 'gratuito',
       'suscripcion_activa': false,
       'created_at': now,
@@ -88,7 +91,9 @@ class AuthRepository {
     await _firestore.collection(usuariosCollection).doc(user.uid).set(profile);
 
     await user.updateDisplayName(
-      [request.nombre, request.apellido].where((e) => e != null && e.isNotEmpty).join(' '),
+      [request.nombre, request.apellido]
+          .where((e) => e.isNotEmpty)
+          .join(' '),
     );
 
     try {

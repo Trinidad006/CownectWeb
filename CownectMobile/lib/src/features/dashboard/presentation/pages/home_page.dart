@@ -8,18 +8,22 @@ import '../../../auth/domain/app_user.dart';
 import '../../../../core/app_router.dart';
 import '../../data/dashboard_repository.dart';
 
-final _animalsCountProvider =
-    StreamProvider.autoDispose.family<int, String>((ref, userId) {
+final _animalsCountProvider = StreamProvider.autoDispose.family<int, String>((
+  ref,
+  userId,
+) {
   return ref.watch(dashboardRepositoryProvider).animalsCount(userId);
 });
 
-final _vaccinationsCountProvider =
-    StreamProvider.autoDispose.family<int, String>((ref, userId) {
-  return ref.watch(dashboardRepositoryProvider).vaccinationsCount(userId);
-});
+final _vaccinationsCountProvider = StreamProvider.autoDispose
+    .family<int, String>((ref, userId) {
+      return ref.watch(dashboardRepositoryProvider).vaccinationsCount(userId);
+    });
 
-final _weightsCountProvider =
-    StreamProvider.autoDispose.family<int, String>((ref, userId) {
+final _weightsCountProvider = StreamProvider.autoDispose.family<int, String>((
+  ref,
+  userId,
+) {
   return ref.watch(dashboardRepositoryProvider).weightsCount(userId);
 });
 
@@ -41,9 +45,9 @@ class DashboardHomePage extends ConsumerWidget {
           backgroundColor: Colors.white,
           title: Text(
             'Tu panel',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
         SliverPadding(
@@ -88,18 +92,18 @@ class _HeaderCard extends StatelessWidget {
           Text(
             'Hola, ${user.nombre ?? user.email}',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             user.isPremium
                 ? 'Tu plan premium está activo. Registro de animales ilimitado.'
                 : 'Tu plan gratuito está listo. Mejora a premium para animales ilimitados y más beneficios.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: 16),
           if (!user.isPremium)
@@ -213,16 +217,16 @@ class _OverviewTile extends StatelessWidget {
           const Spacer(),
           Text(
             value,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
             title,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey.shade700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700),
           ),
         ],
       ),
@@ -247,9 +251,9 @@ class _QuickActionsCard extends StatelessWidget {
         children: [
           Text(
             'Acciones rápidas',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -260,21 +264,21 @@ class _QuickActionsCard extends StatelessWidget {
                 icon: Icons.pets,
                 label: 'Agregar animal',
                 onTap: () {
-                  context.go('${AppRoute.dashboard.path}/${AppRoute.dashboardAnimals.path}');
+                  context.goNamed(AppRoute.dashboardAnimals.name);
                 },
               ),
               _QuickActionButton(
                 icon: Icons.shield,
                 label: 'Registrar vacuna',
                 onTap: () {
-                  context.go('${AppRoute.dashboard.path}/${AppRoute.dashboardVaccinations.path}');
+                  context.goNamed(AppRoute.dashboardVaccinations.name);
                 },
               ),
               _QuickActionButton(
                 icon: Icons.monitor_weight,
                 label: 'Registrar peso',
                 onTap: () {
-                  context.go('${AppRoute.dashboard.path}/${AppRoute.dashboardWeights.path}');
+                  context.goNamed(AppRoute.dashboardWeights.name);
                 },
               ),
             ],
@@ -314,4 +318,3 @@ class _QuickActionButton extends StatelessWidget {
     );
   }
 }
-

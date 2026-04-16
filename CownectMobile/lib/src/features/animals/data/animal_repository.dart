@@ -19,8 +19,8 @@ class AnimalRepository {
   AnimalRepository({
     required FirebaseFirestore firestore,
     required FirebaseStorage storage,
-  })  : _firestore = firestore,
-        _storage = storage;
+  }) : _firestore = firestore,
+       _storage = storage;
 
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
@@ -33,9 +33,18 @@ class AnimalRepository {
         .where('usuario_id', isEqualTo: userId)
         .orderBy('created_at', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Animal.fromDocument(doc))
-            .toList(growable: false));
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => Animal.fromDocument(doc))
+              .toList(growable: false),
+        );
+  }
+
+  Stream<Animal?> watchAnimalById(String animalId) {
+    return _collection.doc(animalId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return Animal.fromDocument(doc);
+    });
   }
 
   Future<Animal> addAnimal(AnimalCreateRequest request) async {
@@ -59,11 +68,15 @@ class AnimalRepository {
     return _collection
         .where('en_venta', isEqualTo: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Animal.fromDocument(doc))
-            .where((animal) =>
-                excludeUserId == null || animal.usuarioId != excludeUserId)
-            .toList(growable: false));
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => Animal.fromDocument(doc))
+              .where(
+                (animal) =>
+                    excludeUserId == null || animal.usuarioId != excludeUserId,
+              )
+              .toList(growable: false),
+        );
   }
 
   Future<String> uploadAnimalPhoto({

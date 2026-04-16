@@ -12,10 +12,10 @@ import '../../../../core/constants.dart';
 import '../../../../core/app_router.dart';
 import 'package:go_router/go_router.dart';
 
-final _animalsProvider =
-    StreamProvider.autoDispose.family<List<Animal>, String>((ref, userId) {
-  return ref.watch(animalRepositoryProvider).watchAnimals(userId);
-});
+final _animalsProvider = StreamProvider.autoDispose
+    .family<List<Animal>, String>((ref, userId) {
+      return ref.watch(animalRepositoryProvider).watchAnimals(userId);
+    });
 
 class AnimalsPage extends ConsumerWidget {
   const AnimalsPage({super.key});
@@ -159,8 +159,8 @@ class _AnimalCard extends ConsumerWidget {
                     Text(
                       animal.nombre ?? 'Sin nombre',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     if (animal.numeroIdentificacion != null)
                       Text(
@@ -183,8 +183,7 @@ class _AnimalCard extends ConsumerWidget {
                           ),
                         _Chip(
                           text: animal.enVenta ? 'En venta' : 'Inventario',
-                          color:
-                              animal.enVenta ? Colors.orange : Colors.green,
+                          color: animal.enVenta ? Colors.orange : Colors.green,
                         ),
                       ],
                     ),
@@ -193,14 +192,27 @@ class _AnimalCard extends ConsumerWidget {
                         padding: const EdgeInsets.only(top: 8.0),
                         child: Text(
                           'Precio: \$${animal.precioVenta!.toStringAsFixed(2)}',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          context.pushNamed(
+                            AppRoute.dashboardAnimalDocumentation.name,
+                            pathParameters: {'id': animal.id},
+                          );
+                        },
+                        icon: const Icon(Icons.verified),
+                        label: const Text('Documentación y certificado'),
+                      ),
+                    ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -254,10 +266,7 @@ class _Chip extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(
-          color: color.darken(),
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: color.darken(), fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -318,10 +327,12 @@ class _AnimalFormSheetState extends ConsumerState<_AnimalFormSheet> {
         numeroIdentificacion: _idController.text.trim().isEmpty
             ? null
             : _idController.text.trim(),
-        especie:
-            _speciesController.text.trim().isEmpty ? null : _speciesController.text.trim(),
-        raza:
-            _breedController.text.trim().isEmpty ? null : _breedController.text.trim(),
+        especie: _speciesController.text.trim().isEmpty
+            ? null
+            : _speciesController.text.trim(),
+        raza: _breedController.text.trim().isEmpty
+            ? null
+            : _breedController.text.trim(),
         sexo: _sexo,
         enVenta: _forSale,
         precioVenta: _forSale && _priceController.text.trim().isNotEmpty
@@ -343,9 +354,9 @@ class _AnimalFormSheetState extends ConsumerState<_AnimalFormSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al guardar: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al guardar: $error')));
       }
     } finally {
       if (mounted) {
@@ -360,12 +371,7 @@ class _AnimalFormSheetState extends ConsumerState<_AnimalFormSheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: bottom,
-        left: 20,
-        right: 20,
-        top: 24,
-      ),
+      padding: EdgeInsets.only(bottom: bottom, left: 20, right: 20, top: 24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -376,10 +382,9 @@ class _AnimalFormSheetState extends ConsumerState<_AnimalFormSheet> {
               children: [
                 Text(
                   'Nuevo animal',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -405,8 +410,9 @@ class _AnimalFormSheetState extends ConsumerState<_AnimalFormSheet> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _idController,
-                    decoration:
-                        const InputDecoration(labelText: 'Número de identificación'),
+                    decoration: const InputDecoration(
+                      labelText: 'Número de identificación',
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -421,7 +427,7 @@ class _AnimalFormSheetState extends ConsumerState<_AnimalFormSheet> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Sexo'),
-                    value: _sexo,
+                    initialValue: _sexo,
                     items: const [
                       DropdownMenuItem(value: 'M', child: Text('Macho')),
                       DropdownMenuItem(value: 'H', child: Text('Hembra')),
@@ -442,7 +448,9 @@ class _AnimalFormSheetState extends ConsumerState<_AnimalFormSheet> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _priceController,
-                      decoration: const InputDecoration(labelText: 'Precio de venta'),
+                      decoration: const InputDecoration(
+                        labelText: 'Precio de venta',
+                      ),
                       keyboardType: TextInputType.number,
                     ),
                   ],
@@ -450,9 +458,11 @@ class _AnimalFormSheetState extends ConsumerState<_AnimalFormSheet> {
                   OutlinedButton.icon(
                     onPressed: _pickImage,
                     icon: const Icon(Icons.photo_library),
-                    label: Text(_imageFile == null
-                        ? 'Agregar foto'
-                        : 'Cambiar foto (${_imageFile!.name})'),
+                    label: Text(
+                      _imageFile == null
+                          ? 'Agregar foto'
+                          : 'Cambiar foto (${_imageFile!.name})',
+                    ),
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -461,7 +471,9 @@ class _AnimalFormSheetState extends ConsumerState<_AnimalFormSheet> {
                       onPressed: _saving ? null : _submit,
                       child: _saving
                           ? const CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             )
                           : const Text('Guardar'),
                     ),

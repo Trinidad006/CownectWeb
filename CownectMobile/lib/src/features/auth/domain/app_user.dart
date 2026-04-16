@@ -14,6 +14,10 @@ class AppUser {
     this.ranchoDireccion,
     this.ranchoDescripcion,
     this.fotoPerfil,
+    this.perfilPublico = false,
+    this.descripcionPublica,
+    this.tiposGanado,
+    this.walletAddress,
     this.plan = UserPlan.free,
     this.suscripcionActiva = false,
     this.suscripcionFecha,
@@ -36,6 +40,12 @@ class AppUser {
       ranchoDireccion: data?['rancho_direccion'] as String?,
       ranchoDescripcion: data?['rancho_descripcion'] as String?,
       fotoPerfil: data?['foto_perfil'] as String?,
+      perfilPublico: data?['perfil_publico'] as bool? ?? false,
+      descripcionPublica: data?['descripcion_publica'] as String?,
+      tiposGanado: (data?['tipos_ganado'] as List<dynamic>?)
+          ?.whereType<String>()
+          .toList(),
+      walletAddress: data?['wallet_address'] as String?,
       plan: _planFromString(data?['plan'] as String?),
       suscripcionActiva: data?['suscripcion_activa'] as bool? ?? false,
       suscripcionFecha: data?['suscripcion_fecha'] as String?,
@@ -56,6 +66,10 @@ class AppUser {
   final String? ranchoDireccion;
   final String? ranchoDescripcion;
   final String? fotoPerfil;
+  final bool perfilPublico;
+  final String? descripcionPublica;
+  final List<String>? tiposGanado;
+  final String? walletAddress;
   final UserPlan plan;
   final bool suscripcionActiva;
   final String? suscripcionFecha;
@@ -75,6 +89,10 @@ class AppUser {
     String? ranchoDireccion,
     String? ranchoDescripcion,
     String? fotoPerfil,
+    bool? perfilPublico,
+    String? descripcionPublica,
+    List<String>? tiposGanado,
+    String? walletAddress,
     UserPlan? plan,
     bool? suscripcionActiva,
     String? suscripcionFecha,
@@ -92,6 +110,10 @@ class AppUser {
       ranchoDireccion: ranchoDireccion ?? this.ranchoDireccion,
       ranchoDescripcion: ranchoDescripcion ?? this.ranchoDescripcion,
       fotoPerfil: fotoPerfil ?? this.fotoPerfil,
+      perfilPublico: perfilPublico ?? this.perfilPublico,
+      descripcionPublica: descripcionPublica ?? this.descripcionPublica,
+      tiposGanado: tiposGanado ?? this.tiposGanado,
+      walletAddress: walletAddress ?? this.walletAddress,
       plan: plan ?? this.plan,
       suscripcionActiva: suscripcionActiva ?? this.suscripcionActiva,
       suscripcionFecha: suscripcionFecha ?? this.suscripcionFecha,
@@ -118,6 +140,10 @@ class AppUser {
       'rancho_direccion': ranchoDireccion,
       'rancho_descripcion': ranchoDescripcion,
       'foto_perfil': fotoPerfil,
+      'perfil_publico': perfilPublico,
+      'descripcion_publica': descripcionPublica,
+      'tipos_ganado': tiposGanado,
+      'wallet_address': walletAddress,
       'plan': plan.name,
       'suscripcion_activa': suscripcionActiva,
       'suscripcion_fecha': suscripcionFecha,

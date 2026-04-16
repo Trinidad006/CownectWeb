@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/app_router.dart';
-import '../../splash/presentation/splash_screen.dart';
 import '../application/auth_providers.dart';
 import '../data/auth_repository.dart';
-import '../domain/app_user.dart';
 import 'widgets/auth_background.dart';
 import 'widgets/auth_text_field.dart';
 import 'widgets/auth_title.dart';
