@@ -15,6 +15,31 @@ import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 const tareaRepository = new FirebaseTareaRepository()
 
+async function mensajeErrorApi(response: Response): Promise<string> {
+  const text = await response.text()
+  try {
+    const data = JSON.parse(text) as { error?: string }
+    if (data?.error && typeof data.error === 'string') return data.error
+  } catch {
+    /* respuesta no JSON */
+  }
+  if (response.status === 401) {
+    return 'Sesión caducada o no autenticado. Vuelve a iniciar sesión e intenta de nuevo.'
+  }
+  if (response.status === 503) {
+    return text.length > 0 && text.length < 400
+      ? text
+      : 'El servidor no tiene Firebase Admin configurado. Revisa .env.local (cuenta de servicio).'
+  }
+  if (response.status === 403) {
+    return 'No tienes permiso para esta acción.'
+  }
+  if (response.status >= 500) {
+    return 'Error en el servidor. Comprueba Firebase Admin y la consola del terminal.'
+  }
+  return `No se pudo completar la acción (código ${response.status}).`
+}
+
 function EmpleadosContent() {
   const router = useRouter()
   const { user } = useAuth(false)
@@ -41,6 +66,7 @@ function EmpleadosContent() {
 
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [guardandoEmpleado, setGuardandoEmpleado] = useState(false)
 
   useEffect(() => {
     if (user?.id) {
@@ -77,6 +103,21 @@ function EmpleadosContent() {
 
   const handleAddEmpleado = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage('')
+    const emailNorm = newEmpleado.email.trim().toLowerCase()
+    const duenoEmail = user?.email?.trim().toLowerCase()
+    if (emailNorm && duenoEmail && emailNorm === duenoEmail) {
+      setErrorMessage('El correo del empleado no puede ser el mismo que el del dueño.')
+      return
+    }
+    const soloDigitos = (s: string) => s.replace(/\D/g, '')
+    const tEmp = soloDigitos(newEmpleado.telefono)
+    const tDueno = soloDigitos(user?.telefono || '')
+    if (tEmp.length > 0 && tDueno.length > 0 && tEmp === tDueno) {
+      setErrorMessage('El teléfono no puede ser el mismo que el del dueño; déjalo vacío o usa el del trabajador.')
+      return
+    }
+    setGuardandoEmpleado(true)
     try {
       const response = await fetchWithAuth('/api/auth/empleados', {
         method: 'POST',
@@ -86,22 +127,25 @@ function EmpleadosContent() {
           apellido: newEmpleado.apellido,
           email: newEmpleado.email,
           telefono: newEmpleado.telefono,
-          id_rancho_jefe: user?.id,
         }),
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Error al registrar empleado')
+        const msg = await mensajeErrorApi(response)
+        throw new Error(msg)
       }
 
       const data = await response.json()
+      setErrorMessage('')
       setShowAddModal(false)
       setNewEmpleado({ nombre: '', apellido: '', email: '', telefono: '' })
       setPinRecienGenerado(data.pin_kiosko || null)
       loadData()
-    } catch (error: any) {
-      setErrorMessage(error.message)
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Error al registrar empleado'
+      setErrorMessage(msg)
+    } finally {
+      setGuardandoEmpleado(false)
     }
   }
 
@@ -161,7 +205,11 @@ function EmpleadosContent() {
               </div>
               {user?.rol === 'PROPIETARIO' && (
                 <button 
-                  onClick={() => setShowAddModal(true)}
+                  type="button"
+                  onClick={() => {
+                    setErrorMessage('')
+                    setShowAddModal(true)
+                  }}
                   className="bg-cownect-green text-white px-8 py-3 rounded-xl font-black hover:bg-opacity-90 transition-all shadow-lg border-2 border-white/10"
                 >
                   + Nuevo Empleado
@@ -287,19 +335,42 @@ function EmpleadosContent() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full animate-scaleIn">
             <h3 className="text-3xl font-black text-gray-900 mb-2">Registrar Personal</h3>
-            <p className="text-gray-500 font-medium mb-8">
-              Se generará un PIN único de 4 dígitos para que el empleado entre en la pantalla de inicio con «Entrar como empleado».
+            <p className="text-gray-500 font-medium mb-4">
+              Se generará un PIN único de 4 dígitos para que el empleado entre con «Entrar como empleado».
             </p>
+            <p className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 mb-8 leading-relaxed">
+              <strong>Correo y teléfono del trabajador:</strong> el correo debe ser <strong>diferente al tuyo</strong> (cada usuario en Firebase tiene un email único). Si pones teléfono, que no sea el mismo que el del dueño; si no tienes otro número, déjalo vacío.
+            </p>
+            {errorMessage && (
+              <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm font-semibold">
+                {errorMessage}
+              </div>
+            )}
             <form onSubmit={handleAddEmpleado} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <input placeholder="Nombre" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.nombre} onChange={e => setNewEmpleado({...newEmpleado, nombre: e.target.value})} required />
                 <input placeholder="Apellido" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.apellido} onChange={e => setNewEmpleado({...newEmpleado, apellido: e.target.value})} required />
               </div>
-              <input type="email" placeholder="Correo electrónico" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.email} onChange={e => setNewEmpleado({...newEmpleado, email: e.target.value})} required />
-              <input placeholder="Teléfono (opcional)" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.telefono} onChange={e => setNewEmpleado({...newEmpleado, telefono: e.target.value})} />
+              <input type="email" autoComplete="off" placeholder="Correo del empleado (distinto al tuyo)" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.email} onChange={e => setNewEmpleado({...newEmpleado, email: e.target.value})} required />
+              <input type="tel" autoComplete="off" placeholder="Teléfono del empleado (opcional)" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.telefono} onChange={e => setNewEmpleado({...newEmpleado, telefono: e.target.value})} />
               <div className="flex flex-col gap-3 pt-6">
-                <button type="submit" className="w-full bg-cownect-green text-white py-4 rounded-2xl font-black text-lg shadow-lg hover:bg-opacity-90 transition-all">Guardar Empleado</button>
-                <button type="button" onClick={() => setShowAddModal(false)} className="w-full bg-white border-2 border-gray-100 text-gray-500 py-4 rounded-2xl font-bold">Cerrar</button>
+                <button
+                  type="submit"
+                  disabled={guardandoEmpleado}
+                  className="w-full bg-cownect-green text-white py-4 rounded-2xl font-black text-lg shadow-lg hover:bg-opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {guardandoEmpleado ? 'Creando…' : 'Guardar Empleado'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false)
+                    setErrorMessage('')
+                  }}
+                  className="w-full bg-white border-2 border-gray-100 text-gray-500 py-4 rounded-2xl font-bold"
+                >
+                  Cerrar
+                </button>
               </div>
             </form>
           </div>
@@ -345,10 +416,23 @@ function EmpleadosContent() {
       )}
 
       {/* Alertas Éxito/Error */}
+      {errorMessage && (
+        <div className="fixed bottom-8 left-4 right-4 md:left-auto md:right-8 md:max-w-lg bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl z-[10001] flex items-start gap-3 border-2 border-white/20 animate-slideIn">
+          <span className="font-bold text-sm leading-snug flex-1">{errorMessage}</span>
+          <button
+            type="button"
+            onClick={() => setErrorMessage('')}
+            className="shrink-0 p-1 hover:bg-white/20 rounded-full transition-all"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       {successMessage && (
         <div className="fixed bottom-8 right-8 bg-cownect-green text-white px-8 py-5 rounded-2xl shadow-2xl z-[10000] flex items-center gap-4 animate-slideIn border-2 border-white/20">
           <span className="font-black text-lg">✓ {successMessage}</span>
-          <button onClick={() => setSuccessMessage('')} className="p-1 hover:bg-white/20 rounded-full transition-all">✕</button>
+          <button type="button" onClick={() => setSuccessMessage('')} className="p-1 hover:bg-white/20 rounded-full transition-all">✕</button>
         </div>
       )}
     </div>
