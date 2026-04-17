@@ -18,24 +18,34 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
+    /** Datos del perfil en `usuarios/{uid}`; si no existe el documento, mapa vacío. */
     function perfilAuth() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data
+        : {};
     }
 
-    /** Empleado con id_rancho_jefe apuntando al dueño del recurso. */
+    /** Empleado kiosko: su doc `usuarios/{uid}` tiene id_rancho_jefe = UID del dueño. */
     function esEmpleadoDelUsuario(userIdPropietario) {
       return request.auth != null
         && tienePerfilUsuario()
         && perfilAuth().id_rancho_jefe == userIdPropietario;
     }
 
-    /** Dueño del rancho, empleado vinculado, o sesión trabajador (custom token) del dueño. */
+    /** Dueño, empleado vinculado al dueño, o sesión trabajador custom del dueño. */
     function puedeLeerRecursoDe(uidDueño) {
       return request.auth != null && (
         uidDueño == request.auth.uid ||
         esEmpleadoDelUsuario(uidDueño) ||
         (isTrabajadorSesion() && ownerUidTrabajador() == uidDueño)
       );
+    }
+
+    /** Escritura sobre datos del rancho del dueño (no sesión trabajador custom). */
+    function puedeEscribirComoDuenoOEmpleado(uidDueño) {
+      return request.auth != null
+        && !isTrabajadorSesion()
+        && (uidDueño == request.auth.uid || esEmpleadoDelUsuario(uidDueño) || isAdmin());
     }
 
     match /usuarios/{userId} {
@@ -65,8 +75,7 @@ service cloud.firestore {
         (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
         (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
       );
-      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
-        (resource.data.usuario_id == request.auth.uid || isAdmin());
+      allow update, delete: if puedeEscribirComoDuenoOEmpleado(resource.data.usuario_id);
     }
 
     match /eventos_animal/{eventoId} {
@@ -86,8 +95,7 @@ service cloud.firestore {
         (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
         (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
       );
-      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
-        (resource.data.usuario_id == request.auth.uid || isAdmin());
+      allow update, delete: if puedeEscribirComoDuenoOEmpleado(resource.data.usuario_id);
     }
 
     match /vacunaciones/{docId} {
@@ -97,8 +105,71 @@ service cloud.firestore {
         (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
         (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
       );
-      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
-        (resource.data.usuario_id == request.auth.uid || isAdmin());
+      allow update, delete: if puedeEscribirComoDuenoOEmpleado(resource.data.usuario_id);
+    }
+
+    /** Colección usada por la app (FirebaseProduccionRepository). */
+    match /producciones/{docId} {
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
+      );
+      allow update, delete: if puedeEscribirComoDuenoOEmpleado(resource.data.usuario_id);
+    }
+
+    /** Alias histórico por si quedaron documentos viejos. */
+    match /produccion/{docId} {
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
+      );
+      allow update, delete: if puedeEscribirComoDuenoOEmpleado(resource.data.usuario_id);
+    }
+
+    match /ranchos/{docId} {
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
+      );
+      allow update, delete: if puedeEscribirComoDuenoOEmpleado(resource.data.usuario_id);
+    }
+
+    match /registro_clinico/{docId} {
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
+      );
+      allow update, delete: if puedeEscribirComoDuenoOEmpleado(resource.data.usuario_id);
+    }
+
+    match /tareas/{docId} {
+      allow read: if request.auth != null && (
+        puedeLeerRecursoDe(resource.data.usuario_id) ||
+        resource.data.asignado_a == request.auth.uid
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
+      );
+      allow update, delete: if request.auth != null && !isTrabajadorSesion() && (
+        resource.data.usuario_id == request.auth.uid ||
+        resource.data.asignado_a == request.auth.uid ||
+        esEmpleadoDelUsuario(resource.data.usuario_id) ||
+        isAdmin()
+      );
+    }
+
+    match /notificaciones/{docId} {
+      allow read: if request.auth != null && resource.data.usuario_id == request.auth.uid;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && resource.data.usuario_id == request.auth.uid;
     }
 
     match /compras/{docId} {
@@ -125,9 +196,10 @@ service cloud.firestore {
         (isTrabajadorSesion() && ownerUidTrabajador() == resource.data.usuario_id)
       );
       allow create: if request.auth != null && !isTrabajadorSesion() &&
-        request.resource.data.usuario_id == request.auth.uid;
+        (request.resource.data.usuario_id == request.auth.uid ||
+          esEmpleadoDelUsuario(request.resource.data.usuario_id));
       allow update: if request.auth != null && !isTrabajadorSesion() &&
-        resource.data.usuario_id == request.auth.uid;
+        (resource.data.usuario_id == request.auth.uid || esEmpleadoDelUsuario(resource.data.usuario_id));
       allow delete: if false;
     }
 
@@ -138,48 +210,82 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    match /ranchos/{docId} {
-      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
-      allow create: if request.auth != null && request.resource.data.usuario_id == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.usuario_id == request.auth.uid;
-    }
-
-    match /produccion/{docId} {
-      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
-      allow create: if request.auth != null && (
-        request.resource.data.usuario_id == request.auth.uid ||
-        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
-        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
-      );
-      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
-        resource.data.usuario_id == request.auth.uid;
-    }
-
-    match /registro_clinico/{docId} {
-      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
-      allow create: if request.auth != null && (
-        request.resource.data.usuario_id == request.auth.uid ||
-        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
-        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
-      );
-      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
-        resource.data.usuario_id == request.auth.uid;
-    }
-
-    match /tareas/{docId} {
+    match /buy_requests/{docId} {
       allow read: if request.auth != null && (
-        puedeLeerRecursoDe(resource.data.usuario_id) ||
-        resource.data.asignado_a == request.auth.uid
+        resource.data.from_user_id == request.auth.uid ||
+        resource.data.to_user_id == request.auth.uid
       );
-      allow create: if request.auth != null && request.resource.data.usuario_id == request.auth.uid;
-      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
-        (resource.data.usuario_id == request.auth.uid || resource.data.asignado_a == request.auth.uid);
+      allow create: if request.auth != null &&
+        request.resource.data.from_user_id == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.from_user_id == request.auth.uid ||
+        resource.data.to_user_id == request.auth.uid
+      );
+      allow delete: if false;
     }
 
-    match /notificaciones/{docId} {
-      allow read: if request.auth != null && resource.data.usuario_id == request.auth.uid;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && resource.data.usuario_id == request.auth.uid;
+    match /chat_messages/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        request.resource.data.author_id == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /deals/{docId} {
+      allow read: if request.auth != null && (
+        resource.data.buyer_id == request.auth.uid ||
+        resource.data.seller_id == request.auth.uid
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.buyer_id == request.auth.uid ||
+        request.resource.data.seller_id == request.auth.uid
+      );
+      allow update: if request.auth != null && (
+        resource.data.buyer_id == request.auth.uid ||
+        resource.data.seller_id == request.auth.uid
+      );
+      allow delete: if false;
+    }
+
+    match /marketplace_compras/{docId} {
+      allow read: if request.auth != null &&
+        resource.data.comprador_id == request.auth.uid;
+      allow create: if request.auth != null &&
+        request.resource.data.comprador_id == request.auth.uid;
+      allow update, delete: if request.auth != null &&
+        resource.data.comprador_id == request.auth.uid;
+    }
+
+    match /marketplace_compras_detalle/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['compra_id'])
+        && exists(/databases/$(database)/documents/marketplace_compras/$(request.resource.data.compra_id))
+        && get(/databases/$(database)/documents/marketplace_compras/$(request.resource.data.compra_id)).data.comprador_id == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        request.resource.data.buyerId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    /** Catálogo de razas: lectura pública; escritura solo admin (seed / consola). */
+    match /razas/{razaId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /** Contadores internos (normalmente solo Admin SDK); si el cliente tocara, restringido. */
+    match /counters/{docId} {
+      allow read, write: if false;
+    }
+
+    /** Colección de tests / emulador (FirebaseAnimalRepository). */
+    match /animals/{docId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
