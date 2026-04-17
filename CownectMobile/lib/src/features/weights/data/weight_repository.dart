@@ -22,11 +22,18 @@ class WeightRepository {
   Stream<List<WeightRecord>> watchWeights(String userId) {
     return _collection
         .where('usuario_id', isEqualTo: userId)
-        .orderBy('fecha_registro', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => WeightRecord.fromDocument(doc))
-            .toList(growable: false));
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => WeightRecord.fromDocument(doc))
+              .toList(growable: false);
+          list.sort((a, b) {
+            final fa = a.fechaRegistro ?? a.createdAt ?? '';
+            final fb = b.fechaRegistro ?? b.createdAt ?? '';
+            return fb.compareTo(fa);
+          });
+          return list;
+        });
   }
 
   Future<void> addWeight(WeightRecord record) {

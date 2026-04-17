@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../animals/data/animal_repository.dart';
 import '../../../animals/domain/animal.dart';
 import '../../../auth/application/auth_providers.dart';
+import '../../../certificates/presentation/animal_documentation_page.dart';
 import '../../../../core/constants.dart';
 import '../../../../core/app_router.dart';
 import 'package:go_router/go_router.dart';
@@ -30,6 +31,10 @@ class AnimalsPage extends ConsumerWidget {
     final animalsAsync = ref.watch(_animalsProvider(user.id));
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Animales'),
+        centerTitle: true,
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           final animalsAsync = ref.read(_animalsProvider(user.id));
@@ -201,9 +206,12 @@ class _AnimalCard extends ConsumerWidget {
                       alignment: Alignment.centerLeft,
                       child: OutlinedButton.icon(
                         onPressed: () {
-                          context.pushNamed(
-                            AppRoute.dashboardAnimalDocumentation.name,
-                            pathParameters: {'id': animal.id},
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (ctx) => AnimalDocumentationPage(
+                                animalId: animal.id,
+                              ),
+                            ),
                           );
                         },
                         icon: const Icon(Icons.verified),

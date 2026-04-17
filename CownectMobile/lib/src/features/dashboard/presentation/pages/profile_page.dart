@@ -211,10 +211,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       appBar: AppBar(
         title: const Text('Perfil'),
       ),
-      body: SingleChildScrollView(
+      body: ListView(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
+        children: [
             Stack(
               alignment: Alignment.bottomRight,
               children: [
@@ -334,8 +333,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       },
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

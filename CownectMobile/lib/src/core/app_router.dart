@@ -1,17 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/application/auth_providers.dart';
+import '../features/auth/domain/app_user.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
 import '../features/dashboard/presentation/dashboard_shell.dart';
-import '../features/dashboard/presentation/pages/animals_page.dart';
-import '../features/dashboard/presentation/pages/home_page.dart';
-import '../features/dashboard/presentation/pages/profile_page.dart';
-import '../features/dashboard/presentation/pages/vaccinations_page.dart';
-import '../features/dashboard/presentation/pages/weights_page.dart';
-import '../features/certificates/presentation/animal_documentation_page.dart';
 import '../features/onboarding/presentation/choose_plan_screen.dart';
 import '../features/splash/presentation/splash_screen.dart';
 
@@ -23,7 +19,6 @@ enum AppRoute {
   dashboard('/dashboard'),
   dashboardHome('home'),
   dashboardAnimals('animals'),
-  dashboardAnimalDocumentation('animal/:id/documentacion'),
   dashboardVaccinations('vaccinations'),
   dashboardWeights('weights'),
   dashboardProfile('profile');
@@ -64,72 +59,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoute.dashboard.path,
         name: AppRoute.dashboard.name,
-        // Si llegamos exactamente a /dashboard, redirigimos a /dashboard/home
-        redirect: (context, state) =>
-            '${AppRoute.dashboard.path}/${AppRoute.dashboardHome.path}',
-        routes: [
-          StatefulShellRoute.indexedStack(
-            builder: (context, state, navigationShell) =>
-                DashboardShell(shell: navigationShell),
-            branches: [
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: AppRoute.dashboardHome.path,
-                    name: AppRoute.dashboardHome.name,
-                    builder: (context, state) => const DashboardHomePage(),
-                  ),
-                ],
-              ),
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: AppRoute.dashboardAnimals.path,
-                    name: AppRoute.dashboardAnimals.name,
-                    builder: (context, state) => const AnimalsPage(),
-                    routes: [
-                      GoRoute(
-                        path: AppRoute.dashboardAnimalDocumentation.path,
-                        name: AppRoute.dashboardAnimalDocumentation.name,
-                        builder: (context, state) {
-                          final animalId = state.pathParameters['id'] ?? '';
-                          return AnimalDocumentationPage(animalId: animalId);
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: AppRoute.dashboardVaccinations.path,
-                    name: AppRoute.dashboardVaccinations.name,
-                    builder: (context, state) => const VaccinationsPage(),
-                  ),
-                ],
-              ),
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: AppRoute.dashboardWeights.path,
-                    name: AppRoute.dashboardWeights.name,
-                    builder: (context, state) => const WeightsPage(),
-                  ),
-                ],
-              ),
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: AppRoute.dashboardProfile.path,
-                    name: AppRoute.dashboardProfile.name,
-                    builder: (context, state) => const ProfilePage(),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
+        builder: (context, state) => const DashboardTabsScaffold(),
       ),
     ],
   );
@@ -137,14 +67,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 class RouterNotifier extends ChangeNotifier {
   RouterNotifier(this.ref) {
-    ref.listen(
+    ref.listen<AsyncValue<User?>>(
       authStateChangesProvider,
-      (_, __) => notifyListeners(),
+      (previous, next) {
+        if (_routerShouldRefreshForAuth(previous, next)) {
+          notifyListeners();
+        }
+      },
       fireImmediately: true,
     );
-    ref.listen(
+    ref.listen<AsyncValue<AppUser?>>(
       appUserStreamProvider,
-      (_, __) => notifyListeners(),
+      (previous, next) {
+        if (_routerShouldRefreshForAppUser(previous, next)) {
+          notifyListeners();
+        }
+      },
       fireImmediately: true,
     );
   }
@@ -194,10 +132,42 @@ class RouterNotifier extends ChangeNotifier {
       return AppRoute.dashboard.path;
     }
 
-    if (isDashboard && state.matchedLocation == AppRoute.dashboard.path) {
-      return '${AppRoute.dashboard.path}/${AppRoute.dashboardHome.path}';
+    if (isDashboard &&
+        state.uri.path.startsWith(AppRoute.dashboard.path) &&
+        state.uri.path != AppRoute.dashboard.path) {
+      return AppRoute.dashboard.path;
     }
 
     return null;
   }
+}
+
+bool _routerShouldRefreshForAppUser(
+  AsyncValue<AppUser?>? previous,
+  AsyncValue<AppUser?> next,
+) {
+  if (next.isLoading) {
+    return previous == null || !previous.isLoading;
+  }
+  if (next.hasError) return true;
+
+  final prevUser = previous?.valueOrNull;
+  final nextUser = next.valueOrNull;
+  if ((prevUser == null) != (nextUser == null)) return true;
+  if (nextUser == null) return false;
+  if (prevUser == null) return true;
+  return prevUser.id != nextUser.id || prevUser.isPremium != nextUser.isPremium;
+}
+
+bool _routerShouldRefreshForAuth(
+  AsyncValue<User?>? previous,
+  AsyncValue<User?> next,
+) {
+  if (next.isLoading) {
+    return previous == null || !previous.isLoading;
+  }
+  if (next.hasError) return true;
+  final prevUid = previous?.valueOrNull?.uid;
+  final nextUid = next.valueOrNull?.uid;
+  return prevUid != nextUid;
 }

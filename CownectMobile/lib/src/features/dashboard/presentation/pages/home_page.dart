@@ -6,6 +6,7 @@ import '../../../../core/constants.dart';
 import '../../../auth/application/auth_providers.dart';
 import '../../../auth/domain/app_user.dart';
 import '../../../../core/app_router.dart';
+import '../../application/dashboard_tab_provider.dart';
 import '../../data/dashboard_repository.dart';
 
 final _animalsCountProvider = StreamProvider.autoDispose.family<int, String>((
@@ -26,6 +27,11 @@ final _weightsCountProvider = StreamProvider.autoDispose.family<int, String>((
 ) {
   return ref.watch(dashboardRepositoryProvider).weightsCount(userId);
 });
+
+/// Índices de [dashboardTabProvider] (misma orden que la barra inferior).
+const _tabAnimales = 1;
+const _tabVacunas = 2;
+const _tabPesos = 3;
 
 class DashboardHomePage extends ConsumerWidget {
   const DashboardHomePage({super.key});
@@ -52,15 +58,18 @@ class DashboardHomePage extends ConsumerWidget {
         ),
         SliverPadding(
           padding: const EdgeInsets.all(16),
-          sliver: SliverList.list(
-            children: [
-              _HeaderCard(user: user),
-              const SizedBox(height: 20),
-              _OverviewGrid(user: user),
-              const SizedBox(height: 20),
-              _QuickActionsCard(),
-              const SizedBox(height: 20),
-            ],
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _HeaderCard(user: user),
+                const SizedBox(height: 20),
+                _OverviewGrid(user: user),
+                const SizedBox(height: 20),
+                const _QuickActionsCard(),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ],
@@ -234,11 +243,11 @@ class _OverviewTile extends StatelessWidget {
   }
 }
 
-class _QuickActionsCard extends StatelessWidget {
+class _QuickActionsCard extends ConsumerWidget {
   const _QuickActionsCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -256,32 +265,25 @@ class _QuickActionsCard extends StatelessWidget {
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _QuickActionButton(
-                icon: Icons.pets,
-                label: 'Agregar animal',
-                onTap: () {
-                  context.goNamed(AppRoute.dashboardAnimals.name);
-                },
-              ),
-              _QuickActionButton(
-                icon: Icons.shield,
-                label: 'Registrar vacuna',
-                onTap: () {
-                  context.goNamed(AppRoute.dashboardVaccinations.name);
-                },
-              ),
-              _QuickActionButton(
-                icon: Icons.monitor_weight,
-                label: 'Registrar peso',
-                onTap: () {
-                  context.goNamed(AppRoute.dashboardWeights.name);
-                },
-              ),
-            ],
+          _QuickActionButton(
+            icon: Icons.pets,
+            label: 'Agregar animal',
+            onTap: () =>
+                ref.read(dashboardTabProvider.notifier).state = _tabAnimales,
+          ),
+          const SizedBox(height: 12),
+          _QuickActionButton(
+            icon: Icons.shield,
+            label: 'Registrar vacuna',
+            onTap: () =>
+                ref.read(dashboardTabProvider.notifier).state = _tabVacunas,
+          ),
+          const SizedBox(height: 12),
+          _QuickActionButton(
+            icon: Icons.monitor_weight,
+            label: 'Registrar peso',
+            onTap: () =>
+                ref.read(dashboardTabProvider.notifier).state = _tabPesos,
           ),
         ],
       ),
@@ -303,12 +305,13 @@ class _QuickActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 160,
+      width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: onTap,
         icon: Icon(icon),
         label: Text(label),
         style: OutlinedButton.styleFrom(
+          alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

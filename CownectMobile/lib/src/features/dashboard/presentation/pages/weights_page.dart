@@ -29,6 +29,10 @@ class WeightsPage extends ConsumerWidget {
     final weightsAsync = ref.watch(_weightsProvider(user.id));
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pesos'),
+        centerTitle: true,
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           showModalBottomSheet<void>(

@@ -30,6 +30,10 @@ class VaccinationsPage extends ConsumerWidget {
     final vaccinationsAsync = ref.watch(_vaccinationsProvider(user.id));
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Vacunas'),
+        centerTitle: true,
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           showModalBottomSheet<void>(

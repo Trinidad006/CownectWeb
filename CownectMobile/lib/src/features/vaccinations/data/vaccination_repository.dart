@@ -22,11 +22,18 @@ class VaccinationRepository {
   Stream<List<Vaccination>> watchVaccinations(String userId) {
     return _collection
         .where('usuario_id', isEqualTo: userId)
-        .orderBy('fecha_aplicacion', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Vaccination.fromDocument(doc))
-            .toList(growable: false));
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => Vaccination.fromDocument(doc))
+              .toList(growable: false);
+          list.sort((a, b) {
+            final fa = a.fechaAplicacion ?? a.createdAt ?? '';
+            final fb = b.fechaAplicacion ?? b.createdAt ?? '';
+            return fb.compareTo(fa);
+          });
+          return list;
+        });
   }
 
   Future<void> addVaccination(Vaccination vaccination) {

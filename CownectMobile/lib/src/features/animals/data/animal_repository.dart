@@ -31,13 +31,18 @@ class AnimalRepository {
   Stream<List<Animal>> watchAnimals(String userId) {
     return _collection
         .where('usuario_id', isEqualTo: userId)
-        .orderBy('created_at', descending: true)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
+        .map((snapshot) {
+          final list = snapshot.docs
               .map((doc) => Animal.fromDocument(doc))
-              .toList(growable: false),
-        );
+              .toList(growable: false);
+          list.sort((a, b) {
+            final ca = a.createdAt ?? '';
+            final cb = b.createdAt ?? '';
+            return cb.compareTo(ca);
+          });
+          return list;
+        });
   }
 
   Stream<Animal?> watchAnimalById(String animalId) {

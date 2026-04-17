@@ -1,73 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../core/app_router.dart';
+import '../application/dashboard_tab_provider.dart';
+import 'pages/animals_page.dart';
+import 'pages/home_page.dart';
+import 'pages/profile_page.dart';
+import 'pages/vaccinations_page.dart';
+import 'pages/weights_page.dart';
 
-class DashboardShell extends ConsumerWidget {
-  const DashboardShell({super.key, required this.shell});
+/// Dashboard con barra inferior: navegación por [IndexedStack] (sin StatefulShellRoute).
+class DashboardTabsScaffold extends ConsumerWidget {
+  const DashboardTabsScaffold({super.key});
 
-  final StatefulNavigationShell shell;
+  static const _labels = [
+    'Inicio',
+    'Animales',
+    'Vacunas',
+    'Pesos',
+    'Perfil',
+  ];
 
-  static const _destinations = [
-    _DashboardDestination(
-      route: AppRoute.dashboardHome,
-      label: 'Inicio',
-      icon: LucideIcons.home,
-    ),
-    _DashboardDestination(
-      route: AppRoute.dashboardAnimals,
-      label: 'Animales',
-      icon: LucideIcons.dog,
-    ),
-    _DashboardDestination(
-      route: AppRoute.dashboardVaccinations,
-      label: 'Vacunas',
-      icon: LucideIcons.shieldCheck,
-    ),
-    _DashboardDestination(
-      route: AppRoute.dashboardWeights,
-      label: 'Pesos',
-      icon: LucideIcons.activity,
-    ),
-    _DashboardDestination(
-      route: AppRoute.dashboardProfile,
-      label: 'Perfil',
-      icon: LucideIcons.user,
-    ),
+  static const _icons = [
+    LucideIcons.home,
+    LucideIcons.dog,
+    LucideIcons.shieldCheck,
+    LucideIcons.activity,
+    LucideIcons.user,
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tab = ref.watch(dashboardTabProvider);
+
     return Scaffold(
-      body: shell,
+      body: IndexedStack(
+        index: tab,
+        sizing: StackFit.expand,
+        children: const [
+          DashboardHomePage(),
+          AnimalsPage(),
+          VaccinationsPage(),
+          WeightsPage(),
+          ProfilePage(),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         height: 72,
-        selectedIndex: shell.currentIndex,
-        onDestinationSelected: (index) =>
-            shell.goBranch(index, initialLocation: index == shell.currentIndex),
-        destinations: _destinations
-            .map(
-              (dest) => NavigationDestination(
-                icon: Icon(dest.icon),
-                label: dest.label,
-              ),
-            )
-            .toList(),
+        selectedIndex: tab,
+        onDestinationSelected: (index) {
+          ref.read(dashboardTabProvider.notifier).state = index;
+        },
+        destinations: List.generate(
+          _labels.length,
+          (i) => NavigationDestination(
+            icon: Icon(_icons[i]),
+            label: _labels[i],
+          ),
+        ),
       ),
     );
   }
-}
-
-class _DashboardDestination {
-  const _DashboardDestination({
-    required this.route,
-    required this.label,
-    required this.icon,
-  });
-
-  final AppRoute route;
-  final String label;
-  final IconData icon;
 }

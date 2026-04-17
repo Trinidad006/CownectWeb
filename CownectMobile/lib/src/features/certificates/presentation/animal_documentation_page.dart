@@ -72,6 +72,7 @@ class _AnimalDocumentationPageState
       if (!mounted) return;
       setState(() {
         _certificates = list;
+        _error = null;
       });
     } catch (e) {
       if (!mounted) return;

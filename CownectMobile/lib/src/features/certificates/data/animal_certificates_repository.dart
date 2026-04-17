@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
@@ -9,35 +10,54 @@ import '../domain/animal_certificate.dart';
 
 final animalCertificatesRepositoryProvider =
     Provider<AnimalCertificatesRepository>((ref) {
-      return AnimalCertificatesRepository(
-        client: ref.watch(httpClientProvider),
-        baseUrl: AppConstants.apiBaseUrl,
-      );
-    });
+  return AnimalCertificatesRepository(
+    client: ref.watch(httpClientProvider),
+    firestore: ref.watch(firestoreProvider),
+    baseUrl: AppConstants.apiBaseUrl,
+  );
+});
 
 class AnimalCertificatesRepository {
-  AnimalCertificatesRepository({required this.client, required this.baseUrl});
+  AnimalCertificatesRepository({
+    required this.client,
+    required this.firestore,
+    required this.baseUrl,
+  });
 
   final http.Client client;
+  final FirebaseFirestore firestore;
   final String baseUrl;
+
+  static const _certificatesCollection = 'animal_certificates';
 
   Uri _endpoint(String path) => Uri.parse('$baseUrl$path');
 
   Future<List<AnimalCertificate>> getByAnimal(String animalId) async {
-    final response = await client.get(
-      _endpoint(
-        '/api/animal-certificates?animalId=${Uri.encodeQueryComponent(animalId)}',
-      ),
-    );
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final list = (data['certificados'] as List<dynamic>? ?? const [])
-          .whereType<Map<String, dynamic>>()
-          .map(AnimalCertificate.fromJson)
-          .toList(growable: false);
-      return list;
+    final snapshot = await firestore
+        .collection(_certificatesCollection)
+        .where('animal_id', isEqualTo: animalId)
+        .get();
+    final list = snapshot.docs
+        .map((doc) => AnimalCertificate.fromJson(_documentToCertificateJson(doc)))
+        .toList(growable: false);
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Map<String, dynamic> _documentToCertificateJson(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = Map<String, dynamic>.from(doc.data());
+    data['id'] = doc.id;
+    for (final key in ['created_at', 'updated_at']) {
+      final v = data[key];
+      if (v is Timestamp) {
+        data[key] = v.toDate().toIso8601String();
+      } else if (v is DateTime) {
+        data[key] = v.toIso8601String();
+      }
     }
-    throw _httpError(response);
+    return data;
   }
 
   Future<Map<String, dynamic>> createAutomatic({
