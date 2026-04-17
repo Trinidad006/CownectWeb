@@ -16,6 +16,7 @@ const animalRepository = new FirebaseAnimalRepository()
 function AnimalesInactivosContent() {
   const router = useRouter()
   const { user } = useAuth(false)
+  const puedeEditar = !user?.es_sesion_trabajador
   const [animales, setAnimales] = useState<Animal[]>([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -142,6 +143,11 @@ function AnimalesInactivosContent() {
               Aquí se muestran los animales que han sido marcados como inactivos (muertos, robados o eliminados). 
               Puede reactivarlos para que vuelvan a aparecer en la lista principal.
             </p>
+            {!puedeEditar && (
+              <p className="text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm mt-4 max-w-xl text-center">
+                Sesión de trabajador: solo puedes consultar esta lista; la reactivación la hace el dueño.
+              </p>
+            )}
           </div>
 
           {/* Barra de búsqueda y filtros */}
@@ -248,12 +254,14 @@ function AnimalesInactivosContent() {
                   )}
 
                   {/* Botón para reactivar */}
-                  <button
-                    onClick={() => handleReactivar(animal)}
-                    className="w-full bg-cownect-green text-white py-2 rounded-lg font-bold hover:bg-cownect-dark-green transition-all"
-                  >
-                    Reactivar Animal
-                  </button>
+                  {puedeEditar && (
+                    <button
+                      onClick={() => handleReactivar(animal)}
+                      className="w-full bg-cownect-green text-white py-2 rounded-lg font-bold hover:bg-cownect-dark-green transition-all"
+                    >
+                      Reactivar Animal
+                    </button>
+                  )}
                 </div>
               )
             })}

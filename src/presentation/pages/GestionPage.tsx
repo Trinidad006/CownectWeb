@@ -18,6 +18,7 @@ const animalRepository = new FirebaseAnimalRepository()
 function GestionContent() {
   const router = useRouter()
   const { user, checkAuth } = useAuth(false)
+  const puedeEditar = !user?.es_sesion_trabajador
   const [animales, setAnimales] = useState<Animal[]>([])
   const [pesos, setPesos] = useState<any[]>([])
   const [vacunaciones, setVacunaciones] = useState<any[]>([])
@@ -117,6 +118,11 @@ function GestionContent() {
   const handleSubmitAnimal = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user?.id) return
+    if (user.es_sesion_trabajador && editingAnimal?.id) {
+      setErrorMessage('Los trabajadores no pueden modificar animales ya registrados.')
+      setShowErrorModal(true)
+      return
+    }
 
     try {
       if (!editingAnimal?.id) {
@@ -435,6 +441,7 @@ function GestionContent() {
   }
 
   const handleEdit = (animal: Animal) => {
+    if (!puedeEditar) return
     setEditingAnimal(animal)
     const esEstatus = animal.estado === 'Activo' || animal.estado === 'Muerto' || animal.estado === 'Robado'
     const obsArray = animal.observaciones ? animal.observaciones.split(' · ').filter(Boolean) : ['']
@@ -486,10 +493,17 @@ function GestionContent() {
           <div className="flex flex-col items-center mb-6">
             <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">Cownect</h1>
             <h2 className="text-2xl font-bold text-black mb-4">Gestión de Animales</h2>
+            {!puedeEditar && (
+              <p className="text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm mb-4 max-w-xl mx-auto text-center">
+                Sesión de trabajador: puedes ver datos y registrar pesos, vacunas y animales nuevos. No puedes editar ni dar de baja animales existentes.
+              </p>
+            )}
             <div className="flex gap-4 mt-2">
-              <button onClick={() => router.push('/dashboard/animales/inactivos')} className="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-700 transition-all">
-                Ver Animales Inactivos
-              </button>
+              {puedeEditar && (
+                <button onClick={() => router.push('/dashboard/animales/inactivos')} className="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-700 transition-all">
+                  Ver Animales Inactivos
+                </button>
+              )}
             </div>
           </div>
 
@@ -867,8 +881,10 @@ function GestionContent() {
                   <button onClick={() => router.push(`/dashboard/fertilidad?id=${selectedAnimal.id}`)} className="bg-rose-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-rose-700">Fertilidad y ciclo reproductivo</button>
                 )}
                 <button onClick={() => router.push(`/dashboard/documentacion?id=${selectedAnimal.id}`)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700">Documentación</button>
-                <button onClick={() => { setAnimalToDelete(selectedAnimal); setShowDeleteModal(true) }} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700">Marcar Inactivo</button>
-                {selectedAnimal.sexo === 'H' && (selectedAnimal.estado === 'Vaca Ordeña' || selectedAnimal.estado === 'Vaca Seca') && (
+                {puedeEditar && (
+                  <button onClick={() => { setAnimalToDelete(selectedAnimal); setShowDeleteModal(true) }} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700">Marcar Inactivo</button>
+                )}
+                {puedeEditar && selectedAnimal.sexo === 'H' && (selectedAnimal.estado === 'Vaca Ordeña' || selectedAnimal.estado === 'Vaca Seca') && (
                   <>
                     <button onClick={() => handleCambiarEstado(selectedAnimal, 'Vaca Ordeña')} className={`px-4 py-2 rounded-lg font-bold ${selectedAnimal.estado === 'Vaca Ordeña' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700'}`}>Ordeña</button>
                     <button onClick={() => handleCambiarEstado(selectedAnimal, 'Vaca Seca')} className={`px-4 py-2 rounded-lg font-bold ${selectedAnimal.estado === 'Vaca Seca' ? 'bg-yellow-600 text-white' : 'bg-yellow-100 text-yellow-700'}`}>Seca</button>
@@ -877,11 +893,13 @@ function GestionContent() {
               </div>
 
               {/* Botón al final: modificar datos */}
-              <div className="pt-4 border-t border-gray-200">
-                <button onClick={() => handleEdit(selectedAnimal)} className="w-full sm:w-auto bg-gray-700 text-white px-6 py-3 rounded-lg font-bold hover:bg-gray-800 transition-all">
-                  Modificar datos del animal (nombre, raza, arete, etc.)
-                </button>
-              </div>
+              {puedeEditar && (
+                <div className="pt-4 border-t border-gray-200">
+                  <button onClick={() => handleEdit(selectedAnimal)} className="w-full sm:w-auto bg-gray-700 text-white px-6 py-3 rounded-lg font-bold hover:bg-gray-800 transition-all">
+                    Modificar datos del animal (nombre, raza, arete, etc.)
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

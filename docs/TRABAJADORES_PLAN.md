@@ -21,11 +21,11 @@ Rama de trabajo: `feature/trabajadores-rancho`.
 - `useAuth` y `ProtectedRoute`: sesión trabajador reconoce claims; **no exige email verificado** en Firebase para esa sesión.
 - Reglas Firestore: el trabajador puede **leer** datos del rancho (`usuario_id == owner_uid` en claims); **crear** animales/pesos/vacunaciones/eventos asociados al dueño; **no actualizar ni borrar** animales ni editar pesos/vacunaciones/eventos (salvo lo que ya permitía el modelo).
 
-### Fase 2
+### Fase 2 (en progreso en rama `feature/trabajadores-rancho`)
 
-- UI del dueño: listado de trabajadores, alta/edición/baja, reset de contraseña.
-- Bloqueo visual en todas las pantallas: deshabilitar botones de edición/eliminación si `user.es_sesion_trabajador`.
-- Marcar registros creados por trabajador (`creado_por_trabajador_id`, `aprobacion_estado: pendiente`) en animales, pesos, vacunaciones, eventos.
+- **Hecho:** `/dashboard/trabajadores` — listado, alta (usuario/contraseña), activar/desactivar, enlace a predeterminado `usuario`/`12345`. `GET/PATCH` API. Acceso rápido en dashboard (solo dueño premium).
+- **Hecho:** Bloqueo UI trabajador en gestión (sin editar animal, marcar inactivo, ordeña/seca), documentación (solo lectura + sin certificados), animales inactivos (sin reactivar).
+- **Pendiente:** reset de contraseña desde panel; marcar altas con `creado_por_trabajador_id` y flujo de aprobación del dueño; resto de pantallas si añaden edición (fertilidad, etc.).
 
 ### Fase 3
 

@@ -51,6 +51,8 @@ export default function DocumentacionAnimalPage() {
   const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
   const hasCertificate = certificados.length > 0
   const [isDocsLocked, setIsDocsLocked] = useState(false)
+  const soloLecturaTrabajador = !!user?.es_sesion_trabajador
+  const modoEdicionBloqueada = isDocsLocked || soloLecturaTrabajador
 
   useEffect(() => {
     if (authLoading) return
@@ -128,6 +130,7 @@ export default function DocumentacionAnimalPage() {
   }
 
   const handleRegisterCertificate = async () => {
+    if (user?.es_sesion_trabajador) return
     if (!animalId || !user?.id) return
     setCertError(null)
     setCertSuccess(null)
@@ -179,6 +182,7 @@ export default function DocumentacionAnimalPage() {
   }
 
   const handleAutoCertificate = async () => {
+    if (user?.es_sesion_trabajador) return
     if (!animalId || !user?.id) return
     setCertError(null)
     setCertSuccess(null)
@@ -211,6 +215,7 @@ export default function DocumentacionAnimalPage() {
   }
 
   const handleMarkReviewed = async () => {
+    if (user?.es_sesion_trabajador) return
     if (!animalId || !user?.id) return
     setCertError(null)
     setCertSuccess(null)
@@ -256,6 +261,7 @@ export default function DocumentacionAnimalPage() {
   }
 
   const handleAdminValidate = async () => {
+    if (user?.es_sesion_trabajador) return
     if (!animalId) return
     setCertError(null)
     setCertSuccess(null)
@@ -292,7 +298,7 @@ export default function DocumentacionAnimalPage() {
   }
 
   const handleSave = async () => {
-    if (isDocsLocked) return
+    if (modoEdicionBloqueada) return
     if (!animalId || !user) return
     if (!declaracionAceptada) {
       setError('Debe aceptar la declaración jurada para continuar')
@@ -435,7 +441,12 @@ export default function DocumentacionAnimalPage() {
             Suba imágenes claras y legibles de cada documento. Todos los campos son opcionales, pero se recomienda completarlos para proceder con la venta.
           </p>
 
-          {isDocsLocked && (
+          {soloLecturaTrabajador && (
+            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+              Sesión de trabajador: solo lectura en documentación y certificados. El dueño debe subir o cambiar documentos.
+            </p>
+          )}
+          {isDocsLocked && !soloLecturaTrabajador && (
             <p className="text-xs text-gray-600 mb-6">
               La documentación de este animal ya fue guardada en esta sesión. Estás viendo una{' '}
               <span className="font-semibold">vista de solo lectura</span>. Para volver a editar,
@@ -519,7 +530,7 @@ export default function DocumentacionAnimalPage() {
           )}
 
           {/* Certificados on‑chain: generación automática y registro manual */}
-          {isPremium && !hasCertificate && (
+          {isPremium && !hasCertificate && !soloLecturaTrabajador && (
             <div className="mb-8 rounded-xl border border-emerald-300 bg-emerald-50/70 p-4">
               <div className="flex flex-col gap-4">
                 <div>
@@ -606,7 +617,7 @@ export default function DocumentacionAnimalPage() {
             </div>
           )}
 
-          <div className={`space-y-6 mb-8 ${isDocsLocked ? 'pointer-events-none opacity-80' : ''}`}>
+          <div className={`space-y-6 mb-8 ${modoEdicionBloqueada ? 'pointer-events-none opacity-80' : ''}`}>
             <div>
               <ImageUpload
                 label="1. Guía de Movilización Interna (o de Tránsito)"
@@ -657,7 +668,7 @@ export default function DocumentacionAnimalPage() {
           </div>
 
           {/* Foto del Animal (separada) */}
-          <div className={`mt-8 pt-8 border-t-2 border-gray-300 ${isDocsLocked ? 'pointer-events-none opacity-80' : ''}`}>
+          <div className={`mt-8 pt-8 border-t-2 border-gray-300 ${modoEdicionBloqueada ? 'pointer-events-none opacity-80' : ''}`}>
             <h3 className="text-xl font-bold text-gray-900 mb-4">Foto del Animal</h3>
             <p className="text-gray-700 mb-4">
               Suba una foto clara del animal. Esta foto aparecerá en el inicio y en la ficha del animal.
@@ -671,7 +682,7 @@ export default function DocumentacionAnimalPage() {
           </div>
 
           {/* Checkbox de Declaración Jurada */}
-          <div className={`mt-8 pt-8 border-t-2 border-gray-300 ${isDocsLocked ? 'pointer-events-none opacity-60' : ''}`}>
+          <div className={`mt-8 pt-8 border-t-2 border-gray-300 ${modoEdicionBloqueada ? 'pointer-events-none opacity-60' : ''}`}>
             <div className="bg-gray-50 rounded-lg p-6 border-2 border-gray-300">
               <label className="flex items-start gap-4 cursor-pointer">
                 <input
@@ -694,7 +705,7 @@ export default function DocumentacionAnimalPage() {
           </div>
 
           {/* Botón de Guardar */}
-          {!isDocsLocked && (
+          {!modoEdicionBloqueada && (
           <div className="mt-8 flex items-center justify-between">
             <div className="flex items-center gap-2 text-gray-600">
               <Lock className="h-5 w-5" />

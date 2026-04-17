@@ -8,6 +8,42 @@ function isPremium(usuario: Record<string, unknown> | null): boolean {
   return usuario.plan === 'premium' || usuario.suscripcion_activa === true
 }
 
+async function requireOwnerPremium(request: NextRequest): Promise<{ ownerUid: string } | NextResponse> {
+  const authHeader = request.headers.get('authorization') || ''
+  const m = authHeader.match(/^Bearer\s+(.+)$/i)
+  if (!m) {
+    return NextResponse.json({ error: 'Falta Authorization Bearer con el ID token del dueño.' }, { status: 401 })
+  }
+  const auth = getFirebaseAdminAuth()
+  const decoded = await auth.verifyIdToken(m[1])
+  const ownerUid = decoded.uid
+  const usuario = (await firestoreAdminServer.getUsuario(ownerUid)) as Record<string, unknown> | null
+  if (!isPremium(usuario)) {
+    return NextResponse.json({ error: 'Solo cuentas premium pueden gestionar trabajadores.' }, { status: 403 })
+  }
+  return { ownerUid }
+}
+
+/**
+ * GET /api/trabajadores
+ * Lista trabajadores del dueño (sin secretos).
+ */
+export async function GET(request: NextRequest) {
+  if (!hasAdminCredentials()) {
+    return NextResponse.json({ error: 'Servidor sin credenciales de administración.' }, { status: 503 })
+  }
+  try {
+    const auth = await requireOwnerPremium(request)
+    if (auth instanceof NextResponse) return auth
+    const trabajadores = await firestoreAdminServer.listTrabajadores(auth.ownerUid)
+    return NextResponse.json({ trabajadores })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Error al listar trabajadores'
+    console.error('trabajadores GET', e)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
+
 /**
  * POST /api/trabajadores
  * Header: Authorization: Bearer <Firebase ID token del dueño>
@@ -18,20 +54,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Servidor sin credenciales de administración.' }, { status: 503 })
   }
   try {
-    const authHeader = request.headers.get('authorization') || ''
-    const m = authHeader.match(/^Bearer\s+(.+)$/i)
-    if (!m) {
-      return NextResponse.json({ error: 'Falta Authorization Bearer con el ID token del dueño.' }, { status: 401 })
-    }
-    const idToken = m[1]
-    const auth = getFirebaseAdminAuth()
-    const decoded = await auth.verifyIdToken(idToken)
-    const ownerUid = decoded.uid
-
-    const usuario = (await firestoreAdminServer.getUsuario(ownerUid)) as Record<string, unknown> | null
-    if (!isPremium(usuario)) {
-      return NextResponse.json({ error: 'Solo cuentas premium pueden crear trabajadores.' }, { status: 403 })
-    }
+    const auth = await requireOwnerPremium(request)
+    if (auth instanceof NextResponse) return auth
+    const { ownerUid } = auth
 
     const body = await request.json()
     const username = String(body?.username || '').trim()

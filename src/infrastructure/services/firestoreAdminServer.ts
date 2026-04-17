@@ -180,4 +180,30 @@ export const firestoreAdminServer = {
     })
     return ref.id
   },
+
+  async listTrabajadores(ownerUid: string) {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(USUARIOS).doc(ownerUid).collection(TRABAJADORES_SUB).get()
+    const list = snapshot.docs.map((d) => {
+      const x = d.data() as Record<string, unknown>
+      return {
+        id: d.id,
+        username: x.username as string,
+        activo: x.activo !== false,
+        created_at: (x.created_at as string) || null,
+      }
+    })
+    list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    return list
+  },
+
+  async setTrabajadorActivo(ownerUid: string, workerId: string, activo: boolean) {
+    const db = requireAdminDb()
+    await db
+      .collection(USUARIOS)
+      .doc(ownerUid)
+      .collection(TRABAJADORES_SUB)
+      .doc(workerId)
+      .update({ activo, updated_at: new Date().toISOString() })
+  },
 }

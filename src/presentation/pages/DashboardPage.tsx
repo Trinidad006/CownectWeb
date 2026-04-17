@@ -110,7 +110,7 @@ function DashboardContent() {
             <BackButton href="/" inline />
           </div>
           <h2 className="text-2xl font-bold text-black mb-6">Accesos Rápidos</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <button 
               onClick={() => router.push('/dashboard/gestion')}
               className="bg-gray-100 rounded-lg p-6 border-2 border-gray-300 hover:border-cownect-green hover:shadow-lg transition-all text-left"
@@ -132,6 +132,16 @@ function DashboardContent() {
               <h3 className="text-xl font-bold text-black mb-2">Solicitudes de compra</h3>
               <p className="text-gray-700 text-sm">Revisa las solicitudes recibidas y conversaciones</p>
             </button>
+            {(user?.plan === 'premium' || user?.suscripcion_activa) && !user?.es_sesion_trabajador && (
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard/trabajadores')}
+                className="bg-gray-100 rounded-lg p-6 border-2 border-gray-300 hover:border-cownect-green hover:shadow-lg transition-all text-left"
+              >
+                <h3 className="text-xl font-bold text-black mb-2">Trabajadores</h3>
+                <p className="text-gray-700 text-sm">Crear usuarios de acceso para tu equipo (solo lectura + altas en el panel)</p>
+              </button>
+            )}
           </div>
         </div>
 
