@@ -28,18 +28,58 @@ export function useAuth(redirectToLogin = true) {
         return
       }
 
-      if (!firebaseUser.emailVerified) {
-        await signOut(auth)
-        setIsAuthenticated(false)
-        setUser(null)
-        setLoading(false)
-        if (redirectToLogin) {
-          router.replace('/login')
-        }
-        return
-      }
-
       try {
+        const token = await firebaseUser.getIdTokenResult()
+        const claims = token.claims as Record<string, unknown>
+        const esTrabajador = claims.tipo === 'trabajador' && typeof claims.owner_uid === 'string'
+
+        if (esTrabajador) {
+          const ownerUid = claims.owner_uid as string
+          const db = getFirebaseDb()
+          const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, ownerUid))
+          const profile = profileSnap.data()
+          const userData: User = {
+            id: ownerUid,
+            email: (profile?.email as string) || '',
+            es_sesion_trabajador: true,
+            trabajador_id: typeof claims.worker_id === 'string' ? claims.worker_id : undefined,
+            nombre: profile?.nombre,
+            apellido: profile?.apellido,
+            telefono: profile?.telefono,
+            rancho: profile?.rancho,
+            rancho_hectareas: profile?.rancho_hectareas,
+            rancho_pais: profile?.rancho_pais,
+            rancho_ciudad: profile?.rancho_ciudad,
+            rancho_direccion: profile?.rancho_direccion,
+            rancho_descripcion: profile?.rancho_descripcion,
+            moneda: profile?.moneda,
+            plan: profile?.plan || 'gratuito',
+            suscripcion_activa: profile?.suscripcion_activa || false,
+            suscripcion_fecha: profile?.suscripcion_fecha,
+            almacenamiento_usado_bytes: profile?.almacenamiento_usado_bytes,
+            almacenamiento_limite_bytes: profile?.almacenamiento_limite_bytes,
+            is_admin: false,
+            suspendido: profile?.suspendido || false,
+            fecha_suspension: profile?.fecha_suspension,
+            motivo_suspension: profile?.motivo_suspension,
+          }
+          setUser(userData)
+          setIsAuthenticated(true)
+          setLoading(false)
+          return
+        }
+
+        if (!firebaseUser.emailVerified) {
+          await signOut(auth)
+          setIsAuthenticated(false)
+          setUser(null)
+          setLoading(false)
+          if (redirectToLogin) {
+            router.replace('/login')
+          }
+          return
+        }
+
         const db = getFirebaseDb()
         const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid))
         const profile = profileSnap.data()
@@ -47,6 +87,7 @@ export function useAuth(redirectToLogin = true) {
         const userData: User = {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
+          es_sesion_trabajador: false,
           nombre: profile?.nombre,
           apellido: profile?.apellido,
           telefono: profile?.telefono,
@@ -88,21 +129,61 @@ export function useAuth(redirectToLogin = true) {
   const checkAuth = async () => {
     const auth = getFirebaseAuth()
     const firebaseUser = auth.currentUser
-    if (!firebaseUser || !firebaseUser.emailVerified) {
-      if (firebaseUser && !firebaseUser.emailVerified) {
-        await signOut(auth)
-      }
+    if (!firebaseUser) {
+      setUser(null)
+      setIsAuthenticated(false)
+      if (redirectToLogin) router.replace('/login')
+      return
+    }
+    const token = await firebaseUser.getIdTokenResult()
+    const claims = token.claims as Record<string, unknown>
+    const esTrabajador = claims.tipo === 'trabajador' && typeof claims.owner_uid === 'string'
+    if (!esTrabajador && !firebaseUser.emailVerified) {
+      await signOut(auth)
       setUser(null)
       setIsAuthenticated(false)
       if (redirectToLogin) router.replace('/login')
       return
     }
     const db = getFirebaseDb()
+    if (esTrabajador) {
+      const ownerUid = claims.owner_uid as string
+      const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, ownerUid))
+      const profile = profileSnap.data()
+      setUser({
+        id: ownerUid,
+        email: (profile?.email as string) || '',
+        es_sesion_trabajador: true,
+        trabajador_id: typeof claims.worker_id === 'string' ? claims.worker_id : undefined,
+        nombre: profile?.nombre,
+        apellido: profile?.apellido,
+        telefono: profile?.telefono,
+        rancho: profile?.rancho,
+        rancho_hectareas: profile?.rancho_hectareas,
+        rancho_pais: profile?.rancho_pais,
+        rancho_ciudad: profile?.rancho_ciudad,
+        rancho_direccion: profile?.rancho_direccion,
+        rancho_descripcion: profile?.rancho_descripcion,
+        moneda: profile?.moneda,
+        plan: profile?.plan || 'gratuito',
+        suscripcion_activa: profile?.suscripcion_activa || false,
+        suscripcion_fecha: profile?.suscripcion_fecha,
+        almacenamiento_usado_bytes: profile?.almacenamiento_usado_bytes,
+        almacenamiento_limite_bytes: profile?.almacenamiento_limite_bytes,
+        is_admin: false,
+        suspendido: profile?.suspendido || false,
+        fecha_suspension: profile?.fecha_suspension,
+        motivo_suspension: profile?.motivo_suspension,
+      })
+      setIsAuthenticated(true)
+      return
+    }
     const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid))
     const profile = profileSnap.data()
-    const userData = {
+    const userData: User = {
       id: firebaseUser.uid,
       email: firebaseUser.email || '',
+      es_sesion_trabajador: false,
       nombre: profile?.nombre,
       apellido: profile?.apellido,
       telefono: profile?.telefono,

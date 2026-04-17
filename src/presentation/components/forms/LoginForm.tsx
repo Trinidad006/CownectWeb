@@ -114,7 +114,7 @@ export default function LoginForm() {
       const isPremium = profile?.plan === 'premium' || profile?.suscripcion_activa
 
       await new Promise(resolve => setTimeout(resolve, 300))
-      window.location.href = isPremium ? '/dashboard' : '/choose-plan'
+      window.location.href = isPremium ? '/select-session' : '/choose-plan'
     } catch (err: any) {
       let errorMessage = 'Error al iniciar sesión. Verifique su conexión.'
       if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {

@@ -9,6 +9,10 @@ const ANIMALES = 'animales'
 const USUARIOS = 'usuarios'
 const ANIMAL_CERTIFICATES = 'animal_certificates'
 const COUNTERS = 'counters'
+const PESOS = 'pesos'
+const VACUNACIONES = 'vacunaciones'
+const EVENTOS_ANIMAL = 'eventos_animal'
+const TRABAJADORES_SUB = 'trabajadores'
 
 function requireAdminDb() {
   if (!hasAdminCredentials()) {
@@ -96,5 +100,84 @@ export const firestoreAdminServer = {
     if (snapshot.empty) return null
     const doc = snapshot.docs[0]
     return { id: doc.id, ...doc.data() }
+  },
+
+  async getPesosByAnimal(animalId: string) {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(PESOS).where('animal_id', '==', animalId).get()
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
+    list.sort((a, b) => (b.fecha_registro || '').localeCompare(a.fecha_registro || ''))
+    return list
+  },
+
+  async getVacunacionesByAnimal(animalId: string) {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(VACUNACIONES).where('animal_id', '==', animalId).get()
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
+    list.sort((a, b) => (b.fecha_aplicacion || '').localeCompare(a.fecha_aplicacion || ''))
+    return list
+  },
+
+  /** Eventos de línea de vida (solo por animal_id; orden en memoria). */
+  async getEventosByAnimalId(animalId: string) {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(EVENTOS_ANIMAL).where('animal_id', '==', animalId).get()
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
+    list.sort((a, b) => (b.fecha_evento || '').localeCompare(a.fecha_evento || ''))
+    return list
+  },
+
+  /** Crías registradas con madre_id = este animal. */
+  async getAnimalesHijosDeMadre(madreId: string) {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(ANIMALES).where('madre_id', '==', madreId).get()
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
+  },
+
+  /** UID del documento `usuarios` cuyo campo `email` coincide (minúsculas). */
+  async findUsuarioIdByEmail(email: string): Promise<string | null> {
+    const db = requireAdminDb()
+    const norm = email.trim().toLowerCase()
+    const snapshot = await db.collection(USUARIOS).where('email', '==', norm).limit(1).get()
+    if (snapshot.empty) return null
+    return snapshot.docs[0].id
+  },
+
+  async countTrabajadores(ownerUid: string): Promise<number> {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(USUARIOS).doc(ownerUid).collection(TRABAJADORES_SUB).get()
+    return snapshot.size
+  },
+
+  async getTrabajadorByOwnerAndUsername(ownerUid: string, username: string) {
+    const db = requireAdminDb()
+    const u = username.trim()
+    const snapshot = await db
+      .collection(USUARIOS)
+      .doc(ownerUid)
+      .collection(TRABAJADORES_SUB)
+      .where('username', '==', u)
+      .limit(1)
+      .get()
+    if (snapshot.empty) return null
+    const doc = snapshot.docs[0]
+    return { id: doc.id, ...doc.data() } as Record<string, unknown> & { id: string }
+  },
+
+  async createTrabajador(
+    ownerUid: string,
+    params: { username: string; password_salt: string; password_hash: string }
+  ): Promise<string> {
+    const db = requireAdminDb()
+    const now = new Date().toISOString()
+    const ref = db.collection(USUARIOS).doc(ownerUid).collection(TRABAJADORES_SUB).doc()
+    await ref.set({
+      username: params.username.trim(),
+      password_salt: params.password_salt,
+      password_hash: params.password_hash,
+      activo: true,
+      created_at: now,
+    })
+    return ref.id
   },
 }

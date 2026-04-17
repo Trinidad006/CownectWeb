@@ -1,6 +1,10 @@
 export interface User {
   id: string
   email: string
+  /** Sesión iniciada con custom token de trabajador (Firebase). */
+  es_sesion_trabajador?: boolean
+  /** Id del documento en `usuarios/{ownerUid}/trabajadores/{id}`. */
+  trabajador_id?: string
   rol?: 'PROPIETARIO' | 'TRABAJADOR'
   id_rancho_jefe?: string
   pin_kiosko?: string

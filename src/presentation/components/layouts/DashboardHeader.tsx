@@ -169,8 +169,11 @@ export default function DashboardHeader() {
                   {iniciales}
                 </div>
               )}
-              <div className="hidden md:block text-left">
+                <div className="hidden md:block text-left">
                 <p className="text-sm font-semibold text-black leading-tight">{nombreCompleto}</p>
+                {user?.es_sesion_trabajador && (
+                  <span className="text-xs font-semibold text-amber-800">Trabajador</span>
+                )}
                 {(user?.plan === 'premium' || user?.suscripcion_activa) && (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold bg-cownect-green/20 text-cownect-green">
                     <Zap className="w-3 h-3" />
@@ -224,22 +227,31 @@ export default function DashboardHeader() {
                     <p className="text-xs text-gray-500 mt-1">Rancho: {user.rancho}</p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">{almacenamientoTexto}</p>
+                  {user?.es_sesion_trabajador && (
+                    <p className="text-xs text-amber-800 mt-2">
+                      Sesión de trabajador: no puedes editar el perfil del dueño desde aquí.
+                    </p>
+                  )}
                 </div>
-                <button
-                  onClick={handleAbrirEditarPerfil}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-semibold"
-                >
-                  Editar Perfil
-                </button>
-                <button
-                  onClick={() => {
-                    setShowMenu(false)
-                    setShowFotoPerfilModal(true)
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  Cambiar Foto de Perfil
-                </button>
+                {!user?.es_sesion_trabajador && (
+                  <>
+                    <button
+                      onClick={handleAbrirEditarPerfil}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-semibold"
+                    >
+                      Editar Perfil
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false)
+                        setShowFotoPerfilModal(true)
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      Cambiar Foto de Perfil
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => {
                     setShowMenu(false)

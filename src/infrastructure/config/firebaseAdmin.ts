@@ -1,6 +1,6 @@
 /**
  * Firebase Admin SDK - solo para servidor (API routes).
- * Bypasea reglas de Firestore. Usado por las rutas de PayPal.
+ * Bypasea reglas de Firestore. Usado en PayPal, trabajadores (custom token), etc.
  *
  * Añade en .env.local (desde Firebase Console → Configuración → Cuentas de servicio
  * → Generar nueva clave privada):
@@ -9,13 +9,14 @@
  * - FIREBASE_PRIVATE_KEY (copia el "private_key" del JSON, con \n como saltos de línea reales)
  */
 
+import type { Auth } from 'firebase-admin/auth'
 import type { Firestore } from 'firebase-admin/firestore'
 import fs from 'node:fs'
 import path from 'node:path'
 
 let adminDb: Firestore | null = null
 
-function initAdmin() {
+function ensureAdminApp() {
   if (typeof window !== 'undefined') {
     throw new Error('Firebase Admin solo en servidor')
   }
@@ -24,8 +25,6 @@ function initAdmin() {
   let clientEmail = process.env.FIREBASE_CLIENT_EMAIL
   let privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
 
-  // Alternativa: cargar credenciales desde un JSON de cuenta de servicio.
-  // Recomendado para evitar problemas con escapes de \n en Windows.
   const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
   if ((!projectId || !clientEmail || !privateKey) && serviceAccountPath) {
     const absPath = path.isAbsolute(serviceAccountPath)
@@ -52,12 +51,21 @@ function initAdmin() {
       credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
     })
   }
-  return admin.firestore() as Firestore
 }
 
 export function getFirebaseAdminDb(): Firestore {
-  if (!adminDb) adminDb = initAdmin()
+  ensureAdminApp()
+  if (!adminDb) {
+    const admin = require('firebase-admin')
+    adminDb = admin.firestore() as Firestore
+  }
   return adminDb
+}
+
+export function getFirebaseAdminAuth(): Auth {
+  ensureAdminApp()
+  const admin = require('firebase-admin')
+  return admin.auth() as Auth
 }
 
 export function hasAdminCredentials(): boolean {

@@ -22,15 +22,21 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         auth,
         async (user) => {
           try {
-            if (!user || !user.emailVerified) {
-              if (user && !user.emailVerified) {
-                await signOut(auth)
-              }
+            if (!user) {
               setIsAuthenticated(false)
               router.replace('/login')
-            } else {
-              setIsAuthenticated(true)
+              return
             }
+            const token = await user.getIdTokenResult()
+            const claims = token.claims as Record<string, unknown>
+            const esTrabajador = claims.tipo === 'trabajador' && typeof claims.owner_uid === 'string'
+            if (!esTrabajador && !user.emailVerified) {
+              await signOut(auth)
+              setIsAuthenticated(false)
+              router.replace('/login')
+              return
+            }
+            setIsAuthenticated(true)
           } catch (err) {
             console.error('Error en ProtectedRoute:', err)
             setError('Error al verificar autenticación')

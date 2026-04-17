@@ -5,62 +5,97 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email == 'mufasaelrey13@gmail.com';
     }
 
-    // Usuarios: cada usuario autenticado lee/escribe su propio documento.
-    // NOTA: La API de PayPal (capture-subscription-order) actualiza plan/suscripción desde el servidor
-    // sin auth. Si esta regla bloquea esas escrituras, usa Firebase Admin SDK en la API
-    // o comenta la regla y usa temporalmente: allow read, write: if request.auth != null || true;
-    match /usuarios/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function isTrabajadorSesion() {
+      return request.auth != null && request.auth.token.tipo == 'trabajador';
     }
 
-    // PayPal órdenes pendientes: la API del servidor escribe/lee (sin auth).
-    // Si usas Firebase Client SDK en API routes, necesitas reglas que permitan escritura.
-    // Alternativa: usa Firebase Admin SDK en las rutas API (bypasea reglas).
+    function ownerUidTrabajador() {
+      return request.auth.token.owner_uid;
+    }
+
+    match /usuarios/{userId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        (isTrabajadorSesion() && ownerUidTrabajador() == userId)
+      );
+      allow write: if request.auth != null && request.auth.uid == userId && !isTrabajadorSesion();
+    }
+
+    match /usuarios/{ownerUid}/trabajadores/{workerId} {
+      allow read, write: if request.auth != null && request.auth.uid == ownerUid && !isTrabajadorSesion();
+    }
+
     match /paypal_pending_orders/{orderId} {
-      allow read, write: if true; // Temporal: permite API. En producción usa Admin SDK.
+      allow read, write: if true;
     }
     match /paypal_pending_subscriptions/{orderId} {
-      allow read, write: if true; // Temporal: permite API. En producción usa Admin SDK.
+      allow read, write: if true;
     }
 
-    // Animales: el dueño puede todo; otros solo leer en venta
     match /animales/{animalId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null &&
+      allow read: if request.auth != null && (
+        resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && resource.data.usuario_id == ownerUidTrabajador())
+      );
+      allow create: if request.auth != null && (
+        (!isTrabajadorSesion() && request.resource.data.usuario_id == request.auth.uid) ||
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador())
+      );
+      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
         (resource.data.usuario_id == request.auth.uid || isAdmin());
     }
 
-    // Eventos de vida del animal (event-sourcing): solo el usuario dueño
     match /eventos_animal/{eventoId} {
-      allow read: if request.auth != null && resource.data.usuario_id == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.usuario_id == request.auth.uid;
-      allow update, delete: if false; // No se editan ni borran eventos
+      allow read: if request.auth != null && (
+        resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && resource.data.usuario_id == ownerUidTrabajador())
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador())
+      );
+      allow update, delete: if false;
     }
 
-    // Pesos, vacunaciones: solo el dueño del animal
     match /pesos/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /vacunaciones/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null && (
+        resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && resource.data.usuario_id == ownerUidTrabajador())
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador())
+      );
+      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
+        (resource.data.usuario_id == request.auth.uid || isAdmin());
     }
 
-    // Compras y calificaciones
+    match /vacunaciones/{docId} {
+      allow read: if request.auth != null && (
+        resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && resource.data.usuario_id == ownerUidTrabajador())
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador())
+      );
+      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
+        (resource.data.usuario_id == request.auth.uid || isAdmin());
+    }
+
     match /compras/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && !isTrabajadorSesion();
     }
     match /calificaciones/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && !isTrabajadorSesion();
     }
     match /reportes/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && !isTrabajadorSesion();
     }
 
-    // Certificados on-chain (espejo off-chain)
     match /animal_certificates/{certId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null &&
+      allow create: if request.auth != null && !isTrabajadorSesion() &&
         (request.resource.data.usuario_id == request.auth.uid || isAdmin());
       allow update, delete: if false;
     }
