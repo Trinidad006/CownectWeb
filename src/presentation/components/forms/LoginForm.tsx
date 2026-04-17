@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { signInWithEmailAndPassword, signOut, sendEmailVerification } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { getFirebaseAuth, getFirebaseDb } from '@/infrastructure/config/firebase'
@@ -21,7 +21,6 @@ const INSTRUCCIONES_VERIFICACION = (
 )
 
 export default function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
     email: '',
@@ -34,7 +33,7 @@ export default function LoginForm() {
   const [showUnverifiedBlock, setShowUnverifiedBlock] = useState(false)
 
   const [showPinModal, setShowPinModal] = useState(false)
-  const [pinData, setPinData] = useState({ email: '', pin: '' })
+  const [pinEmpleado, setPinEmpleado] = useState('')
   const [pinLoading, setPinLoading] = useState(false)
 
   useEffect(() => {
@@ -52,23 +51,30 @@ export default function LoginForm() {
 
   const handlePinLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    const pin = pinEmpleado.replace(/\D/g, '')
+    if (pin.length !== 4) {
+      setError('Ingresa un PIN de 4 dígitos.')
+      return
+    }
     setPinLoading(true)
     setError(null)
     try {
       const response = await fetch('/api/auth/login-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pinData)
+        body: JSON.stringify({ pin }),
       })
 
+      const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        const data = await response.json()
         throw new Error(data.error || 'Error en el inicio de sesión')
       }
 
+      const auth = getFirebaseAuth()
+      await signInWithEmailAndPassword(auth, data.email, `Cownect${pin}`)
       window.location.href = '/dashboard'
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || 'No se pudo iniciar sesión')
     } finally {
       setPinLoading(false)
     }
@@ -253,49 +259,50 @@ export default function LoginForm() {
 
       <button
         type="button"
-        onClick={() => setShowPinModal(true)}
+        onClick={() => {
+          setShowPinModal(true)
+          setPinEmpleado('')
+        }}
         className="w-full bg-white text-cownect-green border-2 border-cownect-green py-4 rounded-lg font-bold text-lg hover:bg-green-50 transition-all duration-200"
       >
-        Ingresar como empleado (PIN)
+        Entrar como empleado (PIN único)
       </button>
 
-      {/* Modal de PIN para Empleados */}
       {showPinModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">Acceso Empleados</h3>
-            <p className="text-gray-600 mb-6 text-center text-sm">Ingrese su correo y PIN de 4 dígitos proporcionado por su patrón.</p>
-            
+            <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">Acceso empleado (kiosko)</h3>
+            <p className="text-gray-600 mb-6 text-center text-sm">
+              Introduce el PIN de 4 dígitos que te dio el dueño del rancho. Es único: no hace falta correo.
+            </p>
+
             <form onSubmit={handlePinLogin} className="space-y-4">
               <input
-                type="email"
-                placeholder="Correo electrónico"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-cownect-green outline-none"
-                value={pinData.email}
-                onChange={e => setPinData({...pinData, email: e.target.value})}
-                required
-              />
-              <input
-                type="password"
-                placeholder="PIN de 4 dígitos"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="• • • •"
                 maxLength={4}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-cownect-green outline-none text-center text-2xl tracking-[1em] font-bold"
-                value={pinData.pin}
-                onChange={e => setPinData({...pinData, pin: e.target.value.replace(/\D/g,'')})}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-cownect-green outline-none text-center text-2xl tracking-[0.5em] font-bold"
+                value={pinEmpleado}
+                onChange={(e) => setPinEmpleado(e.target.value.replace(/\D/g, ''))}
                 required
               />
-              
+
               <div className="flex gap-3 pt-4">
-                <button 
-                  type="submit" 
-                  disabled={pinLoading}
+                <button
+                  type="submit"
+                  disabled={pinLoading || pinEmpleado.replace(/\D/g, '').length !== 4}
                   className="flex-1 bg-cownect-green text-white py-3 rounded-lg font-bold hover:bg-opacity-90 disabled:opacity-50"
                 >
-                  {pinLoading ? 'Verificando...' : 'Entrar'}
+                  {pinLoading ? 'Entrando...' : 'Entrar'}
                 </button>
-                <button 
-                  type="button" 
-                  onClick={() => setShowPinModal(false)}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPinModal(false)
+                    setPinEmpleado('')
+                  }}
                   className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200"
                 >
                   Cancelar

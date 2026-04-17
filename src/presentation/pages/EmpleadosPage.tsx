@@ -11,6 +11,7 @@ import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { FirebaseTareaRepository } from '@/infrastructure/repositories/FirebaseTareaRepository'
 import { Tarea } from '@/domain/entities/Tarea'
 import { User } from '@/domain/entities/User'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 const tareaRepository = new FirebaseTareaRepository()
 
@@ -29,8 +30,8 @@ function EmpleadosContent() {
     apellido: '',
     email: '',
     telefono: '',
-    pin: ''
   })
+  const [pinRecienGenerado, setPinRecienGenerado] = useState<string | null>(null)
 
   const [newTask, setNewTask] = useState({
     titulo: '',
@@ -43,7 +44,8 @@ function EmpleadosContent() {
 
   useEffect(() => {
     if (user?.id) {
-      if (user.plan !== 'premium' && !user.suscripcion_activa) {
+      const esDueno = user.rol === 'PROPIETARIO' || !user.rol
+      if (esDueno && user.plan !== 'premium' && !user.suscripcion_activa) {
         router.push('/dashboard')
         return
       }
@@ -76,14 +78,16 @@ function EmpleadosContent() {
   const handleAddEmpleado = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/auth/empleados', {
+      const response = await fetchWithAuth('/api/auth/empleados', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...newEmpleado,
+          nombre: newEmpleado.nombre,
+          apellido: newEmpleado.apellido,
+          email: newEmpleado.email,
+          telefono: newEmpleado.telefono,
           id_rancho_jefe: user?.id,
-          pin_kiosko: newEmpleado.pin
-        })
+        }),
       })
 
       if (!response.ok) {
@@ -91,9 +95,10 @@ function EmpleadosContent() {
         throw new Error(error.error || 'Error al registrar empleado')
       }
 
-      setSuccessMessage('Empleado registrado exitosamente')
+      const data = await response.json()
       setShowAddModal(false)
-      setNewEmpleado({ nombre: '', apellido: '', email: '', telefono: '', pin: '' })
+      setNewEmpleado({ nombre: '', apellido: '', email: '', telefono: '' })
+      setPinRecienGenerado(data.pin_kiosko || null)
       loadData()
     } catch (error: any) {
       setErrorMessage(error.message)
@@ -104,7 +109,7 @@ function EmpleadosContent() {
     e.preventDefault()
     if (!selectedEmpleado?.id || !user?.id) return
     try {
-      await fetch('/api/tareas', {
+      await fetchWithAuth('/api/tareas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,22 +287,40 @@ function EmpleadosContent() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full animate-scaleIn">
             <h3 className="text-3xl font-black text-gray-900 mb-2">Registrar Personal</h3>
-            <p className="text-gray-500 font-medium mb-8">El empleado recibirá acceso mediante PIN.</p>
+            <p className="text-gray-500 font-medium mb-8">
+              Se generará un PIN único de 4 dígitos para que el empleado entre en la pantalla de inicio con «Entrar como empleado».
+            </p>
             <form onSubmit={handleAddEmpleado} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <input placeholder="Nombre" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.nombre} onChange={e => setNewEmpleado({...newEmpleado, nombre: e.target.value})} required />
                 <input placeholder="Apellido" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.apellido} onChange={e => setNewEmpleado({...newEmpleado, apellido: e.target.value})} required />
               </div>
               <input type="email" placeholder="Correo electrónico" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.email} onChange={e => setNewEmpleado({...newEmpleado, email: e.target.value})} required />
-              <div className="grid grid-cols-2 gap-4">
-                <input placeholder="Teléfono" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.telefono} onChange={e => setNewEmpleado({...newEmpleado, telefono: e.target.value})} />
-                <input placeholder="PIN" maxLength={4} className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl font-black text-center text-2xl tracking-[10px] focus:ring-2 focus:ring-cownect-green outline-none" value={newEmpleado.pin} onChange={e => setNewEmpleado({...newEmpleado, pin: e.target.value.replace(/\D/g,'')})} required />
-              </div>
+              <input placeholder="Teléfono (opcional)" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.telefono} onChange={e => setNewEmpleado({...newEmpleado, telefono: e.target.value})} />
               <div className="flex flex-col gap-3 pt-6">
                 <button type="submit" className="w-full bg-cownect-green text-white py-4 rounded-2xl font-black text-lg shadow-lg hover:bg-opacity-90 transition-all">Guardar Empleado</button>
                 <button type="button" onClick={() => setShowAddModal(false)} className="w-full bg-white border-2 border-gray-100 text-gray-500 py-4 rounded-2xl font-bold">Cerrar</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {pinRecienGenerado && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[10000] p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center border-4 border-cownect-green">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">PIN de acceso (único)</p>
+            <p className="text-5xl font-black tracking-[0.3em] text-cownect-dark-green mb-6">{pinRecienGenerado}</p>
+            <p className="text-gray-600 text-sm mb-8 leading-relaxed">
+              Compártelo solo con este empleado. Con él inicia sesión en la app en «Entrar como empleado (PIN único)». No volverá a mostrarse aquí de forma destacada; el PIN sigue visible en la lista del equipo.
+            </p>
+            <button
+              type="button"
+              onClick={() => setPinRecienGenerado(null)}
+              className="w-full bg-cownect-green text-white py-4 rounded-2xl font-black text-lg"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}

@@ -8,6 +8,7 @@ import DashboardHeader from '../components/layouts/DashboardHeader'
 import BackButton from '../components/ui/BackButton'
 import Sidebar from '../components/layouts/Sidebar'
 import { RegistroClinico } from '@/domain/entities/RegistroClinico'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 function SaludContent() {
   const router = useRouter()
@@ -35,7 +36,7 @@ function SaludContent() {
   const loadData = async () => {
     if (!user?.id) return
     try {
-      const response = await fetch(`/api/salud?usuario_id=${user.id}`)
+      const response = await fetchWithAuth(`/api/salud?usuario_id=${user.id}`)
       if (response.ok) {
         const data = await response.json()
         setHistorial(data)
@@ -55,7 +56,7 @@ function SaludContent() {
     setSuccess('')
 
     try {
-      const response = await fetch('/api/salud', {
+      const response = await fetchWithAuth('/api/salud', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

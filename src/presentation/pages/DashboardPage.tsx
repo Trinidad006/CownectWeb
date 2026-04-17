@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '../hooks/useAuth'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import DashboardHeader from '../components/layouts/DashboardHeader'
@@ -12,11 +11,10 @@ import BackButton from '../components/ui/BackButton'
 import { EstadisticasCompletas } from '@/domain/entities/Estadisticas'
 import { Animal } from '@/domain/entities/Animal'
 import Link from 'next/link'
-import { CreditCard, MapPin, Milk, CheckSquare, Award, Users, Beef, Activity, ClipboardList } from 'lucide-react'
+import { CreditCard, Activity } from 'lucide-react'
 import Sidebar from '../components/layouts/Sidebar'
 
 function DashboardContent() {
-  const router = useRouter()
   const { user } = useAuth(false)
   const [loading, setLoading] = useState(true)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -163,36 +161,6 @@ function DashboardContent() {
                   <p className="text-4xl font-black text-orange-800 tracking-tighter">{estadisticasPrincipales.totalCarne}</p>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Carne (KG)</p>
                 </div>
-              </div>
-            </div>
-
-            {/* Modulos de Trabajo */}
-            <div className="bg-white rounded-[40px] shadow-2xl p-10 border border-gray-100 relative overflow-hidden">
-              <div className="flex items-center gap-3 mb-8 border-b border-gray-50 pb-4">
-                <ClipboardList className="text-gray-300 w-6 h-6" />
-                <h2 className="text-sm font-black text-gray-400 uppercase tracking-[6px]">Modulos de Trabajo</h2>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-                <button onClick={() => router.push('/dashboard/ranchos')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <MapPin className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Ranchos</p>
-                </button>
-                <button onClick={() => router.push('/dashboard/produccion')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <Milk className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Produccion</p>
-                </button>
-                <button onClick={() => router.push('/dashboard/empleados')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <Users className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Empleados</p>
-                </button>
-                <button onClick={() => router.push('/dashboard/tareas')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <CheckSquare className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Tareas</p>
-                </button>
-                <button onClick={() => router.push('/dashboard/certificado')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <Award className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Certificado</p>
-                </button>
               </div>
             </div>
 

@@ -7,6 +7,7 @@ import ProtectedRoute from '../components/auth/ProtectedRoute'
 import DashboardHeader from '../components/layouts/DashboardHeader'
 import BackButton from '../components/ui/BackButton'
 import Sidebar from '../components/layouts/Sidebar'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 interface Tarea {
   id: string
@@ -53,8 +54,8 @@ function TareasContent() {
     if (!user?.id) return
     try {
       const [resEmpleados, resTareas] = await Promise.all([
-        fetch(`/api/empleados?usuario_id=${user.id}`),
-        fetch(`/api/tareas?usuario_id=${user.id}`)
+        fetchWithAuth(`/api/empleados?usuario_id=${user.id}`),
+        fetchWithAuth(`/api/tareas?usuario_id=${user.id}`)
       ])
       
       if (resEmpleados.ok) {
@@ -82,7 +83,7 @@ function TareasContent() {
     setSuccess('')
 
     try {
-      const response = await fetch('/api/tareas', {
+      const response = await fetchWithAuth('/api/tareas', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

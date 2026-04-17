@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { getFirebaseAuth } from '@/infrastructure/config/firebase'
+import { doc, getDoc } from 'firebase/firestore'
+import { getFirebaseAuth, getFirebaseDb } from '@/infrastructure/config/firebase'
+
+const USUARIOS_COLLECTION = 'usuarios'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -22,14 +25,22 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         auth,
         async (user) => {
           try {
-            if (!user || !user.emailVerified) {
-              if (user && !user.emailVerified) {
-                await signOut(auth)
-              }
+            if (!user) {
               setIsAuthenticated(false)
               router.replace('/login')
             } else {
-              setIsAuthenticated(true)
+              const db = getFirebaseDb()
+              const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, user.uid))
+              const profile = profileSnap.data()
+              const esEmpleadoKiosko = profile?.rol === 'TRABAJADOR'
+
+              if (!user.emailVerified && !esEmpleadoKiosko) {
+                await signOut(auth)
+                setIsAuthenticated(false)
+                router.replace('/login')
+              } else {
+                setIsAuthenticated(true)
+              }
             }
           } catch (err) {
             console.error('Error en ProtectedRoute:', err)

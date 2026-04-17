@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/infrastructure/utils/auth'
+import { getCurrentUserFromRequest } from '@/infrastructure/utils/authServer'
 import { PremiumValidator } from '@/domain/validators/PremiumValidator'
+import type { User } from '@/domain/entities/User'
 
 export type PremiumValidationType =
   | 'premium'
@@ -20,19 +21,22 @@ export class PremiumAPIMiddleware {
     tipoValidacion: PremiumValidationType
   ): Promise<{ valido: boolean; response?: NextResponse; user?: any }> {
     try {
-      // Obtener usuario autenticado
-      const user = await getCurrentUser()
-      if (!user) {
+      const apiUser = await getCurrentUserFromRequest(request)
+      if (!apiUser) {
         return {
           valido: false,
           response: NextResponse.json(
-            { error: 'Usuario no autenticado' },
+            {
+              error:
+                'No autenticado. Envía el encabezado Authorization: Bearer <token> (ID token de Firebase).',
+            },
             { status: 401 }
-          )
+          ),
         }
       }
 
-      // Validar según el tipo requerido
+      const user = apiUser as User
+
       let validacion
       switch (tipoValidacion) {
         case 'premium':

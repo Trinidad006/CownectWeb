@@ -7,6 +7,7 @@ import ProtectedRoute from '../components/auth/ProtectedRoute'
 import DashboardHeader from '../components/layouts/DashboardHeader'
 import BackButton from '../components/ui/BackButton'
 import Sidebar from '../components/layouts/Sidebar'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 interface Rancho {
   id: string
@@ -40,7 +41,7 @@ function RanchosContent() {
   const loadData = async () => {
     if (!user?.id) return
     try {
-      const response = await fetch(`/api/rancho?usuario_id=${user.id}`)
+      const response = await fetchWithAuth(`/api/rancho?usuario_id=${user.id}`)
       if (response.ok) {
         const data = await response.json()
         setRanchos(data)
@@ -60,7 +61,7 @@ function RanchosContent() {
     setSuccess('')
 
     try {
-      const response = await fetch('/api/rancho', {
+      const response = await fetchWithAuth('/api/rancho', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

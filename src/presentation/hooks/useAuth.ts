@@ -28,29 +28,36 @@ export function useAuth(redirectToLogin = true) {
         return
       }
 
-      if (!firebaseUser.emailVerified) {
-        await signOut(auth)
-        setIsAuthenticated(false)
-        setUser(null)
-        setLoading(false)
-        if (redirectToLogin) {
-          router.replace('/login')
-        }
-        return
-      }
-
       try {
         const db = getFirebaseDb()
         const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid))
         const profile = profileSnap.data()
+        const esEmpleadoKiosko = profile?.rol === 'TRABAJADOR'
+
+        if (!firebaseUser.emailVerified && !esEmpleadoKiosko) {
+          await signOut(auth)
+          setIsAuthenticated(false)
+          setUser(null)
+          setLoading(false)
+          if (redirectToLogin) {
+            router.replace('/login')
+          }
+          return
+        }
 
         const userData: User = {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
+          rol: profile?.rol || 'PROPIETARIO',
+          id_rancho_jefe: profile?.id_rancho_jefe,
+          pin_kiosko: profile?.pin_kiosko,
+          permisos: profile?.permisos,
           nombre: profile?.nombre,
           apellido: profile?.apellido,
           telefono: profile?.telefono,
           rancho: profile?.rancho,
+          rancho_ids: profile?.rancho_ids,
+          rancho_actual_id: profile?.rancho_actual_id,
           rancho_hectareas: profile?.rancho_hectareas,
           rancho_pais: profile?.rancho_pais,
           rancho_ciudad: profile?.rancho_ciudad,
@@ -88,10 +95,7 @@ export function useAuth(redirectToLogin = true) {
   const checkAuth = async () => {
     const auth = getFirebaseAuth()
     const firebaseUser = auth.currentUser
-    if (!firebaseUser || !firebaseUser.emailVerified) {
-      if (firebaseUser && !firebaseUser.emailVerified) {
-        await signOut(auth)
-      }
+    if (!firebaseUser) {
       setUser(null)
       setIsAuthenticated(false)
       if (redirectToLogin) router.replace('/login')
@@ -100,13 +104,29 @@ export function useAuth(redirectToLogin = true) {
     const db = getFirebaseDb()
     const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid))
     const profile = profileSnap.data()
-    const userData = {
+    const esEmpleadoKiosko = profile?.rol === 'TRABAJADOR'
+
+    if (!firebaseUser.emailVerified && !esEmpleadoKiosko) {
+      await signOut(auth)
+      setUser(null)
+      setIsAuthenticated(false)
+      if (redirectToLogin) router.replace('/login')
+      return
+    }
+
+    const userData: User = {
       id: firebaseUser.uid,
       email: firebaseUser.email || '',
+      rol: profile?.rol || 'PROPIETARIO',
+      id_rancho_jefe: profile?.id_rancho_jefe,
+      pin_kiosko: profile?.pin_kiosko,
+      permisos: profile?.permisos,
       nombre: profile?.nombre,
       apellido: profile?.apellido,
       telefono: profile?.telefono,
       rancho: profile?.rancho,
+      rancho_ids: profile?.rancho_ids,
+      rancho_actual_id: profile?.rancho_actual_id,
       rancho_hectareas: profile?.rancho_hectareas,
       rancho_pais: profile?.rancho_pais,
       rancho_ciudad: profile?.rancho_ciudad,

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { getFirebaseAuth } from '@/infrastructure/config/firebase'
 import { useAuth } from '../../hooks/useAuth'
@@ -15,6 +15,8 @@ import { Zap } from 'lucide-react'
 
 export default function DashboardHeader() {
   const router = useRouter()
+  const pathname = usePathname()
+  const enDashboard = pathname === '/dashboard' || (pathname?.startsWith('/dashboard/') ?? false)
   const { user, checkAuth } = useAuth(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showFotoPerfilModal, setShowFotoPerfilModal] = useState(false)
@@ -249,15 +251,18 @@ export default function DashboardHeader() {
                 >
                   Descargar app móvil
                 </button>
-                <button
-                  onClick={() => {
-                    setShowMenu(false)
-                    router.push('/dashboard')
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  Ir al Dashboard
-                </button>
+                {!enDashboard && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMenu(false)
+                      router.push('/dashboard')
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Ir al Dashboard
+                  </button>
+                )}
                 <button
                   onClick={handleLogout}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"

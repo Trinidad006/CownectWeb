@@ -96,10 +96,13 @@ export class FirebaseAuthRepository implements AuthRepository {
         await sendEmailVerification(firebaseUser)
       }
 
+      const rolRegistro = (enhancedProfile as { rol?: string }).rol ?? 'PROPIETARIO'
       const user: User = {
         id: firebaseUser.uid,
         email: firebaseUser.email || data.email,
-        rol: 'PROPIETARIO',
+        rol: rolRegistro as User['rol'],
+        id_rancho_jefe: (data as { id_rancho_jefe?: string }).id_rancho_jefe,
+        pin_kiosko: (data as { pin_kiosko?: string }).pin_kiosko,
         nombre: data.nombre,
         apellido: data.apellido,
         telefono: data.telefono,

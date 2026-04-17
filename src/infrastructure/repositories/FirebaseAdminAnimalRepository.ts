@@ -74,3 +74,5 @@ export class FirebaseAdminAnimalRepository implements AnimalRepository {
     throw new Error('FirebaseAdminAnimalRepository.updateStatus no implementado.')
   }
 }
+
+

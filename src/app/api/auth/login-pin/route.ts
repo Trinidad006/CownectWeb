@@ -1,43 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getFirebaseDb, getFirebaseAuth } from '@/infrastructure/config/firebase'
-import { collection, query, where, getDocs } from 'firebase/firestore'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import {
+  obtenerEmailPorPinKiosko,
+  validarEmailPinKiosko,
+} from '@/infrastructure/utils/pinKioskoServer'
 
+/**
+ * Devuelve el email asociado al PIN para que el cliente haga signInWithEmailAndPassword.
+ * La sesión de Firebase debe abrirse en el navegador, no en el servidor.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const { email, pin } = await request.json()
+    const body = await request.json()
+    const pinRaw = body.pin != null ? String(body.pin) : ''
+    const pin = pinRaw.replace(/\D/g, '')
+    const emailOpcional = body.email != null ? String(body.email).trim().toLowerCase() : ''
 
-    if (!email || !pin) {
-      return NextResponse.json({ error: 'Email y PIN son requeridos' }, { status: 400 })
+    if (pin.length !== 4) {
+      return NextResponse.json({ error: 'El PIN debe ser de 4 dígitos' }, { status: 400 })
     }
 
-    const db = getFirebaseDb()
-    const q = query(
-      collection(db, 'usuarios'), 
-      where('email', '==', email), 
-      where('pin_kiosko', '==', pin)
-    )
-    
-    const snapshot = await getDocs(q)
-    
-    if (snapshot.empty) {
-      return NextResponse.json({ error: 'PIN o correo incorrecto' }, { status: 401 })
+    let email: string | null = null
+
+    if (emailOpcional) {
+      const ok = await validarEmailPinKiosko(emailOpcional, pin)
+      if (!ok) {
+        return NextResponse.json({ error: 'PIN o correo incorrectos' }, { status: 401 })
+      }
+      email = emailOpcional
+    } else {
+      const res = await obtenerEmailPorPinKiosko(pin)
+      if (res.error === 'ambiguo') {
+        return NextResponse.json(
+          { error: 'PIN duplicado en el sistema. Contacta al administrador.' },
+          { status: 409 }
+        )
+      }
+      if (!res.email) {
+        return NextResponse.json({ error: 'PIN no válido o no registrado' }, { status: 401 })
+      }
+      email = res.email
     }
 
-    const userData = snapshot.docs[0].data()
-    
-    // Autenticamos programáticamente con la contraseña temporal
-    const auth = getFirebaseAuth()
-    const tempPassword = `Cownect${pin}`
-    
-    const { user } = await signInWithEmailAndPassword(auth, email, tempPassword)
-
-    return NextResponse.json({ 
-      user: { id: user.uid, email: user.email, rol: userData.rol },
-      message: 'Inicio de sesión exitoso' 
-    }, { status: 200 })
-
+    return NextResponse.json({
+      email,
+      message: 'Usa este correo con la contraseña temporal en el cliente',
+    })
   } catch (error: any) {
-    return NextResponse.json({ error: 'Error en la autenticación por PIN' }, { status: 500 })
+    console.error('[login-pin]', error)
+    return NextResponse.json({ error: 'Error al validar el PIN' }, { status: 500 })
   }
 }
