@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { firestoreService } from '@/infrastructure/services/firestoreService'
+import { firestoreServiceServer } from '@/infrastructure/services/firestoreServiceServer'
 
 /**
  * GET /api/buy-requests/[id]/chat
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const chatId = context.params.id
-    const messages = await firestoreService.getChatMessages(chatId)
+    const messages = await firestoreServiceServer.getChatMessages(chatId)
     return NextResponse.json({ messages })
   } catch (error: any) {
     console.error('get chat messages:', error)
@@ -41,7 +41,7 @@ export async function POST(
       )
     }
 
-    const messageId = await firestoreService.addChatMessage({
+    const messageId = await firestoreServiceServer.addChatMessage({
       chatId,
       authorId,
       texto,

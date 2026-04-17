@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { doc, getDoc, deleteDoc } from 'firebase/firestore'
 import { getFirebaseDb } from '@/infrastructure/config/firebase'
 import { getFirebaseAdminDb, hasAdminCredentials } from '@/infrastructure/config/firebaseAdmin'
-import { firestoreService } from '@/infrastructure/services/firestoreService'
+import { firestoreServiceServer } from '@/infrastructure/services/firestoreServiceServer'
 
 const PAYPAL_API = process.env.PAYPAL_SANDBOX === 'true'
   ? 'https://api-m.sandbox.paypal.com'
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         { status: captureRes.status }
       )
     }
-    await firestoreService.comprarAnimal(animalId, compradorId)
+    await firestoreServiceServer.comprarAnimal(animalId, compradorId)
     if (hasAdminCredentials()) {
       await getFirebaseAdminDb().collection('paypal_pending_orders').doc(orderID).delete()
     } else {

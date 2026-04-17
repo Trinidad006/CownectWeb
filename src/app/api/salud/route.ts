@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { FirebaseRegistroClinicoRepository } from '@/infrastructure/repositories/FirebaseRegistroClinicoRepository'
+import { FirebaseRegistroClinicoAdminRepository } from '@/infrastructure/repositories/FirebaseRegistroClinicoAdminRepository'
 import { RegistrarRegistroClinicoUseCase } from '@/domain/use-cases/salud/RegistrarRegistroClinicoUseCase'
 import { PremiumAPIMiddleware } from '@/infrastructure/utils/PremiumAPIMiddleware'
 
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { usuario_id, rancho_id, animal_id, fecha_registro, enfermedad, diagnostico, tratamiento, veterinario, estado, observaciones } = body
 
-    const registroRepository = new FirebaseRegistroClinicoRepository()
+    const registroRepository = new FirebaseRegistroClinicoAdminRepository()
     const useCase = new RegistrarRegistroClinicoUseCase(registroRepository)
 
     const result = await useCase.execute({

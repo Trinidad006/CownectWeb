@@ -46,7 +46,7 @@ export default function PesosChart({ pesos, className = '' }: PesosChartProps) {
   const formatearFecha = (fecha: string) => {
     try {
       const date = new Date(fecha)
-      return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' })
+      return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
     } catch {
       return fecha
     }
@@ -200,8 +200,8 @@ export default function PesosChart({ pesos, className = '' }: PesosChartProps) {
         )}
       </div>
       <div className="flex justify-between text-xs text-gray-500 mt-1">
-        <span>{ordenados[0]?.fecha_registro || ''}</span>
-        <span>{ordenados[ordenados.length - 1]?.fecha_registro || ''}</span>
+        <span>{ordenados[0]?.fecha_registro ? formatearFecha(ordenados[0].fecha_registro) : ''}</span>
+        <span>{ordenados[ordenados.length - 1]?.fecha_registro ? formatearFecha(ordenados[ordenados.length - 1].fecha_registro) : ''}</span>
       </div>
     </div>
   )

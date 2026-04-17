@@ -6,11 +6,9 @@ import {
   LayoutDashboard, 
   Settings, 
   MapPin, 
-  Milk, 
   CheckSquare, 
   Award, 
   Users,
-  UserCog,
   ChevronRight,
   Search,
   MessageSquare
@@ -82,25 +80,15 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
           path: '/dashboard/certificado',
         },
         {
-          name: 'Empleados (Kiosko)',
+          name: 'Empleados',
           icon: <Users className="w-5 h-5" />,
           path: '/dashboard/empleados',
-        },
-        {
-          name: 'Trabajadores',
-          icon: <UserCog className="w-5 h-5" />,
-          path: '/dashboard/trabajadores',
           hideIfWorker: true,
         },
         {
           name: 'Sistema de Tareas',
           icon: <CheckSquare className="w-5 h-5" />,
           path: '/dashboard/tareas',
-        },
-        {
-          name: 'Produccion',
-          icon: <Milk className="w-5 h-5" />,
-          path: '/dashboard/produccion',
         },
         {
           name: 'Multiples Ranchos',

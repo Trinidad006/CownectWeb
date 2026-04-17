@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signOut } from 'firebase/auth'
-import { getFirebaseAuth } from '@/infrastructure/config/firebase'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import { useAuth } from '../hooks/useAuth'
 
@@ -25,12 +23,6 @@ function SelectSessionContent() {
 
   const irDueño = () => {
     router.push('/dashboard')
-  }
-
-  const irTrabajador = async () => {
-    const auth = getFirebaseAuth()
-    await signOut(auth)
-    router.push('/worker-login')
   }
 
   const crearTrabajadorPredeterminado = async () => {
@@ -80,7 +72,7 @@ function SelectSessionContent() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Elegir sesión</h1>
           <p className="text-gray-600 mt-2 text-sm">
-            Cuenta premium. Accede como dueño del rancho o cierra sesión e inicia como trabajador con las credenciales que definió el dueño.
+            Cuenta premium activa. Continúa como dueño del rancho.
           </p>
         </div>
         <div className="grid gap-4">
@@ -91,18 +83,14 @@ function SelectSessionContent() {
           >
             Dueño de rancho
           </button>
-          <button
-            type="button"
-            onClick={irTrabajador}
-            className="w-full py-4 px-4 rounded-lg border-2 border-gray-900 text-gray-900 font-semibold hover:bg-gray-50 transition"
-          >
-            Trabajador
-          </button>
         </div>
         <div className="border-t pt-4 space-y-2">
           <p className="text-xs text-gray-500 text-center">
             Primera vez con trabajadores: crea el acceso predeterminado (usuario <strong>usuario</strong>, contraseña{' '}
             <strong>12345</strong>) si aún no tienes ninguno.
+          </p>
+          <p className="text-xs text-gray-500 text-center">
+            El acceso de trabajadores se realiza en <strong>/worker-login</strong> con correo del dueño, usuario y contraseña.
           </p>
           <button
             type="button"

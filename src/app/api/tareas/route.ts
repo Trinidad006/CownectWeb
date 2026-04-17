@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { FirebaseTareaRepository } from '@/infrastructure/repositories/FirebaseTareaRepository'
+import { FirebaseTareaAdminRepository } from '@/infrastructure/repositories/FirebaseTareaAdminRepository'
 import { CrearTareaUseCase } from '@/domain/use-cases/tareas/CrearTareaUseCase'
 import { PremiumAPIMiddleware } from '@/infrastructure/utils/PremiumAPIMiddleware'
 
-const tareaRepository = new FirebaseTareaRepository()
+const tareaRepository = new FirebaseTareaAdminRepository()
 
 /**
  * GET /api/tareas?usuario_id=...

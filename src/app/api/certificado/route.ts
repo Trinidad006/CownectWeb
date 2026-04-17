@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { FirebaseRanchoRepository } from '@/infrastructure/repositories/FirebaseRanchoRepository'
-import { FirebaseAnimalRepository } from '@/infrastructure/repositories/FirebaseAnimalRepository'
+import { FirebaseRanchoAdminRepository } from '@/infrastructure/repositories/FirebaseRanchoAdminRepository'
 import { VerificarCertificadoCownectUseCase } from '@/domain/use-cases/certificado/VerificarCertificadoCownectUseCase'
 import { PremiumAPIMiddleware } from '@/infrastructure/utils/PremiumAPIMiddleware'
 import { CertificadoCownectService } from '@/domain/services/CertificadoCownectService'
+import { firestoreAdminServer } from '@/infrastructure/services/firestoreAdminServer'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,14 +19,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'rancho_id y usuario_id son requeridos' }, { status: 400 })
     }
 
-    const ranchoRepo = new FirebaseRanchoRepository()
+    const ranchoRepo = new FirebaseRanchoAdminRepository()
     const rancho = await ranchoRepo.getById(rancho_id, usuario_id)
     if (!rancho) {
       return NextResponse.json({ error: 'Rancho no encontrado' }, { status: 404 })
     }
 
-    const animalRepo = new FirebaseAnimalRepository()
-    const animales = await animalRepo.getAll(usuario_id)
+    const animales = await firestoreAdminServer.getAnimalesByUsuario(usuario_id)
     const useCase = new VerificarCertificadoCownectUseCase()
 
     const resultado = await useCase.execute(rancho, animales)

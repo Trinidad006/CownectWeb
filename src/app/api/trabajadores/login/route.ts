@@ -10,7 +10,13 @@ import { buildTrabajadorAuthUid } from '@/lib/trabajadorAuthUid'
 
 function isPremium(usuario: Record<string, unknown> | null): boolean {
   if (!usuario) return false
-  return usuario.plan === 'premium' || usuario.suscripcion_activa === true
+  const plan = String(usuario.plan || '').trim().toLowerCase()
+  const rawActiva = usuario.suscripcion_activa
+  const suscripcionActiva =
+    rawActiva === true ||
+    rawActiva === 1 ||
+    (typeof rawActiva === 'string' && ['true', '1', 'si', 'sí'].includes(rawActiva.trim().toLowerCase()))
+  return plan === 'premium' || suscripcionActiva
 }
 
 /**
@@ -35,7 +41,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const ownerUid = await firestoreAdminServer.findUsuarioIdByEmail(ownerEmail)
+    const auth = getFirebaseAdminAuth()
+    let ownerUid: string | null = null
+    try {
+      const authUser = await auth.getUserByEmail(ownerEmail)
+      ownerUid = authUser.uid
+    } catch {
+      ownerUid = await firestoreAdminServer.findUsuarioIdByEmail(ownerEmail)
+    }
     if (!ownerUid) {
       return NextResponse.json({ error: 'No se encontró un dueño con ese correo.' }, { status: 404 })
     }
@@ -60,7 +73,6 @@ export async function POST(request: NextRequest) {
     }
 
     const authUid = buildTrabajadorAuthUid(ownerUid, trabajador.id)
-    const auth = getFirebaseAdminAuth()
     const customToken = await auth.createCustomToken(authUid, {
       tipo: 'trabajador',
       owner_uid: ownerUid,

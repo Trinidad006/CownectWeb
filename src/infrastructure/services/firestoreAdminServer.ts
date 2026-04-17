@@ -38,6 +38,14 @@ export const firestoreAdminServer = {
     return snap.exists ? { id: snap.id, ...snap.data() } : null
   },
 
+  async getAnimalesByUsuario(usuarioId: string) {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(ANIMALES).where('usuario_id', '==', usuarioId).get()
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
+    list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    return list
+  },
+
   async updateAnimal(id: string, data: Record<string, unknown>) {
     const db = requireAdminDb()
     const cleaned = Object.fromEntries(
@@ -168,13 +176,21 @@ export const firestoreAdminServer = {
 
   async createTrabajador(
     ownerUid: string,
-    params: { username: string; password_salt: string; password_hash: string }
+    params: {
+      username: string
+      password_salt: string
+      password_hash: string
+      nombre?: string
+      apellido?: string
+    }
   ): Promise<string> {
     const db = requireAdminDb()
     const now = new Date().toISOString()
     const ref = db.collection(USUARIOS).doc(ownerUid).collection(TRABAJADORES_SUB).doc()
     await ref.set({
       username: params.username.trim(),
+      nombre: typeof params.nombre === 'string' ? params.nombre.trim() : '',
+      apellido: typeof params.apellido === 'string' ? params.apellido.trim() : '',
       password_salt: params.password_salt,
       password_hash: params.password_hash,
       activo: true,
@@ -191,6 +207,8 @@ export const firestoreAdminServer = {
       return {
         id: d.id,
         username: x.username as string,
+        nombre: typeof x.nombre === 'string' ? x.nombre : '',
+        apellido: typeof x.apellido === 'string' ? x.apellido : '',
         activo: x.activo !== false,
         created_at: (x.created_at as string) || null,
       }

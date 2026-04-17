@@ -236,7 +236,7 @@ function MarketplaceContent() {
 
   const buildWhatsAppChecklist = () => {
     const lineas = [
-      '✅ Checklist compra Cownect Marketplace',
+      'Checklist compra Cownect Marketplace',
       '',
       ...carrito.map((item) => {
         if (item.tipo === 'lote' && item.lote) return `☐ Lote: ${item.lote.nombre} - $${item.precioUsd} USD x ${item.cantidad}`

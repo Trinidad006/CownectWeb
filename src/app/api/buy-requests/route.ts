@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { firestoreService } from '@/infrastructure/services/firestoreService'
+import { firestoreServiceServer } from '@/infrastructure/services/firestoreServiceServer'
 
 /**
  * POST /api/buy-requests
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const id = await firestoreService.createBuyRequest({
+    const id = await firestoreServiceServer.createBuyRequest({
       fromUserId,
       toUserId,
       animalIds,
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const data = await firestoreService.getBuyRequestsForUser(userId)
+    const data = await firestoreServiceServer.getBuyRequestsForUser(userId)
     return NextResponse.json(data)
   } catch (error: any) {
     console.error('get buy requests:', error)

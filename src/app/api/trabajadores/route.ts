@@ -9,7 +9,13 @@ import { hashWorkerPassword } from '@/lib/workerPassword'
 
 function isPremium(usuario: Record<string, unknown> | null): boolean {
   if (!usuario) return false
-  return usuario.plan === 'premium' || usuario.suscripcion_activa === true
+  const plan = String(usuario.plan || '').trim().toLowerCase()
+  const rawActiva = usuario.suscripcion_activa
+  const suscripcionActiva =
+    rawActiva === true ||
+    rawActiva === 1 ||
+    (typeof rawActiva === 'string' && ['true', '1', 'si', 'sí'].includes(rawActiva.trim().toLowerCase()))
+  return plan === 'premium' || suscripcionActiva
 }
 
 async function requireOwnerPremium(request: NextRequest): Promise<{ ownerUid: string } | NextResponse> {
@@ -51,7 +57,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/trabajadores
  * Header: Authorization: Bearer <Firebase ID token del dueño>
- * Body: { username: string, password: string }
+ * Body: { username: string, password: string, nombre?: string, apellido?: string }
  */
 export async function POST(request: NextRequest) {
   if (!hasAdminCredentials()) {
@@ -65,6 +71,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const username = String(body?.username || '').trim()
     const password = String(body?.password || '')
+    const nombre = String(body?.nombre || '').trim()
+    const apellido = String(body?.apellido || '').trim()
     if (!username || !password) {
       return NextResponse.json({ error: 'username y password son requeridos.' }, { status: 400 })
     }
@@ -80,11 +88,13 @@ export async function POST(request: NextRequest) {
     const { salt, hash } = hashWorkerPassword(password)
     const id = await firestoreAdminServer.createTrabajador(ownerUid, {
       username,
+      nombre,
+      apellido,
       password_salt: salt,
       password_hash: hash,
     })
 
-    return NextResponse.json({ id, username }, { status: 201 })
+    return NextResponse.json({ id, username, nombre, apellido }, { status: 201 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Error al crear trabajador'
     console.error('trabajadores POST', e)

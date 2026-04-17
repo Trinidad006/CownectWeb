@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { FirebaseRanchoRepository } from '@/infrastructure/repositories/FirebaseRanchoRepository'
+import { FirebaseRanchoAdminRepository } from '@/infrastructure/repositories/FirebaseRanchoAdminRepository'
 import { CrearRanchoUseCase } from '@/domain/use-cases/rancho/CrearRanchoUseCase'
 import { ObtenerRanchosUseCase } from '@/domain/use-cases/rancho/ObtenerRanchosUseCase'
 import { PremiumAPIMiddleware } from '@/infrastructure/utils/PremiumAPIMiddleware'
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'usuario_id es requerido' }, { status: 400 })
     }
 
-    const ranchoRepository = new FirebaseRanchoRepository()
+    const ranchoRepository = new FirebaseRanchoAdminRepository()
     const useCase = new ObtenerRanchosUseCase(ranchoRepository)
     const result = await useCase.execute(usuario_id)
 
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { usuario_id, nombre, pais, ciudad, direccion, descripcion, hectareas, tipos_ganado } = body
-    const ranchoRepository = new FirebaseRanchoRepository()
+    const ranchoRepository = new FirebaseRanchoAdminRepository()
     const useCase = new CrearRanchoUseCase(ranchoRepository)
     const result = await useCase.execute({
       usuario_id,

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { FirebaseProduccionRepository } from '@/infrastructure/repositories/FirebaseProduccionRepository'
+import { FirebaseProduccionAdminRepository } from '@/infrastructure/repositories/FirebaseProduccionAdminRepository'
 import { RegistrarProduccionUseCase } from '@/domain/use-cases/produccion/RegistrarProduccionUseCase'
 
-const produccionRepository = new FirebaseProduccionRepository()
+const produccionRepository = new FirebaseProduccionAdminRepository()
 
 /**
  * GET /api/produccion?usuario_id=...

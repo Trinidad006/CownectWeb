@@ -8,6 +8,7 @@ import DashboardHeader from '../components/layouts/DashboardHeader'
 import BackButton from '../components/ui/BackButton'
 import Sidebar from '../components/layouts/Sidebar'
 import { fetchWithAuth } from '../utils/fetchWithAuth'
+import { Home, MapPin } from 'lucide-react'
 
 interface Rancho {
   id: string
@@ -202,12 +203,12 @@ function RanchosContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {ranchos.map(rancho => (
                   <div key={rancho.id} className="bg-white border-2 border-gray-100 rounded-3xl p-6 shadow-lg hover:border-cownect-green transition-all group">
-                    <div className="w-12 h-12 bg-cownect-green/10 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:bg-cownect-green group-hover:text-white transition-all">
-                      🏡
+                    <div className="w-12 h-12 bg-cownect-green/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-cownect-green transition-all">
+                      <Home className="w-6 h-6 text-cownect-green group-hover:text-white" />
                     </div>
                     <h3 className="text-xl font-black text-gray-900 mb-1">{rancho.nombre}</h3>
                     <p className="text-gray-500 text-sm font-medium mb-4 flex items-center gap-1">
-                      📍{' '}
+                      <MapPin className="w-4 h-4" />
                       {[rancho.ciudad, rancho.pais].filter(Boolean).join(', ') ||
                         rancho.direccion ||
                         'Ubicación no especificada'}

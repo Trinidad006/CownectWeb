@@ -12,7 +12,7 @@ import BackButton from '../components/ui/BackButton'
 import { EstadisticasCompletas } from '@/domain/entities/Estadisticas'
 import { Animal } from '@/domain/entities/Animal'
 import Link from 'next/link'
-import { CreditCard, MapPin, Milk, CheckSquare, Award, Users, Beef, Activity, ClipboardList, UserCog } from 'lucide-react'
+import { CreditCard, MapPin, CheckSquare, Award, Activity, ClipboardList, Users } from 'lucide-react'
 import Sidebar from '../components/layouts/Sidebar'
 
 function DashboardContent() {
@@ -27,8 +27,6 @@ function DashboardContent() {
     totalAnimales: 0,
     totalVacunaciones: 0,
     totalPesos: 0,
-    totalLeche: 0,
-    totalCarne: 0
   })
   const [estadisticasCompletas, setEstadisticasCompletas] = useState<EstadisticasCompletas | null>(null)
   const [animalesInventario, setAnimalesInventario] = useState<Animal[]>([])
@@ -43,31 +41,18 @@ function DashboardContent() {
       setLoading(true)
       
       // Intentamos cargar todo, pero capturamos errores individuales para no romper el dashboard
-      const [animales, vacunaciones, pesos, produccion] = await Promise.all([
+      const [animales, vacunaciones, pesos] = await Promise.all([
         firestoreService.getAnimalesByUser(user.id).catch(err => { console.error('Error animales:', err); return [] }),
         firestoreService.getVacunacionesByUser(user.id).catch(err => { console.error('Error vacunas:', err); return [] }),
         firestoreService.getPesosByUser(user.id).catch(err => { console.error('Error pesos:', err); return [] }),
-        firestoreService.getProduccionByUser(user.id).catch(err => { console.error('Error produccion:', err); return [] })
       ])
 
       setAnimalesInventario(animales as Animal[])
-
-      let lecheAcumulada = 0
-      let carneAcumulada = 0
-      if (produccion && Array.isArray(produccion)) {
-        produccion.forEach((p: any) => {
-          const valor = parseFloat(p.cantidad) || 0
-          if (p.tipo === 'leche') lecheAcumulada += valor
-          else if (p.tipo === 'carne') carneAcumulada += valor
-        })
-      }
 
       setEstadisticasPrincipales({
         totalAnimales: animales.length,
         totalVacunaciones: vacunaciones.length,
         totalPesos: pesos.length,
-        totalLeche: Number(lecheAcumulada.toFixed(2)),
-        totalCarne: Number(carneAcumulada.toFixed(2))
       })
 
       const calcularEstadisticas = new CalcularEstadisticasUseCase()
@@ -133,70 +118,54 @@ function DashboardContent() {
             )}
 
             {/* Fila de Indicadores Principales */}
-            <div className="bg-white rounded-[40px] shadow-2xl p-10 border-2 border-cownect-green/20 relative overflow-hidden">
-              <div className="flex items-center justify-between mb-10 border-b border-gray-100 pb-6">
+            <div className="bg-white/95 backdrop-blur-sm rounded-[36px] shadow-2xl p-8 md:p-10 border border-cownect-green/15 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-5">
                 <div className="flex items-center gap-3">
-                  <Activity className="text-cownect-green w-8 h-8" />
-                  <h2 className="text-sm font-black text-gray-400 uppercase tracking-[6px]">Resumen del Establecimiento</h2>
+                  <Activity className="text-cownect-green w-7 h-7" />
+                  <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">Resumen del Establecimiento</h2>
                 </div>
                 <BackButton href="/" inline />
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-                <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 group hover:border-cownect-green transition-all shadow-sm">
-                  <p className="text-4xl font-black text-cownect-green tracking-tighter">{estadisticasPrincipales.totalAnimales}</p>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Animales Activos</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+                <div className="bg-gradient-to-br from-gray-50 to-white p-5 md:p-6 rounded-3xl border border-gray-100 hover:border-cownect-green/40 transition-all shadow-sm hover:shadow-md">
+                  <p className="text-4xl font-bold text-cownect-green tracking-tight">{estadisticasPrincipales.totalAnimales}</p>
+                  <p className="text-sm font-medium text-gray-500 mt-2">Animales activos</p>
                 </div>
-                <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 group hover:border-blue-500 transition-all shadow-sm">
-                  <p className="text-4xl font-black text-blue-600 tracking-tighter">{estadisticasPrincipales.totalVacunaciones}</p>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Vacunaciones</p>
+                <div className="bg-gradient-to-br from-gray-50 to-white p-5 md:p-6 rounded-3xl border border-gray-100 hover:border-blue-400/50 transition-all shadow-sm hover:shadow-md">
+                  <p className="text-4xl font-bold text-blue-600 tracking-tight">{estadisticasPrincipales.totalVacunaciones}</p>
+                  <p className="text-sm font-medium text-gray-500 mt-2">Vacunaciones</p>
                 </div>
-                <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 group hover:border-purple-500 transition-all shadow-sm">
-                  <p className="text-4xl font-black text-purple-600 tracking-tighter">{estadisticasPrincipales.totalPesos}</p>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Registros Peso</p>
-                </div>
-                <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 group hover:border-blue-400 transition-all shadow-sm">
-                  <p className="text-4xl font-black text-blue-800 tracking-tighter">{estadisticasPrincipales.totalLeche}</p>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Leche (LTS)</p>
-                </div>
-                <div className="bg-orange-50/50 p-6 rounded-3xl border border-orange-100 group hover:border-orange-400 transition-all shadow-sm">
-                  <p className="text-4xl font-black text-orange-800 tracking-tighter">{estadisticasPrincipales.totalCarne}</p>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Carne (KG)</p>
+                <div className="bg-gradient-to-br from-gray-50 to-white p-5 md:p-6 rounded-3xl border border-gray-100 hover:border-purple-400/50 transition-all shadow-sm hover:shadow-md">
+                  <p className="text-4xl font-bold text-purple-600 tracking-tight">{estadisticasPrincipales.totalPesos}</p>
+                  <p className="text-sm font-medium text-gray-500 mt-2">Registros de peso</p>
                 </div>
               </div>
             </div>
 
-            {/* Modulos de Trabajo */}
-            <div className="bg-white rounded-[40px] shadow-2xl p-10 border border-gray-100 relative overflow-hidden">
-              <div className="flex items-center gap-3 mb-8 border-b border-gray-50 pb-4">
-                <ClipboardList className="text-gray-300 w-6 h-6" />
-                <h2 className="text-sm font-black text-gray-400 uppercase tracking-[6px]">Modulos de Trabajo</h2>
+            {/* Módulos de Trabajo */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-[36px] shadow-2xl p-8 md:p-10 border border-gray-100 relative overflow-hidden">
+              <div className="flex items-center gap-3 mb-7 border-b border-gray-100 pb-4">
+                <ClipboardList className="text-gray-400 w-5 h-5" />
+                <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">Modulos de Trabajo</h2>
               </div>
-              <div className={`grid gap-6 grid-cols-2 ${isPremium && !user?.es_sesion_trabajador ? 'md:grid-cols-3 lg:grid-cols-6' : 'md:grid-cols-5'}`}>
-                <button onClick={() => router.push('/dashboard/ranchos')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <MapPin className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Ranchos</p>
+              <div className={`grid gap-4 md:gap-5 grid-cols-2 ${isPremium && !user?.es_sesion_trabajador ? 'md:grid-cols-3 lg:grid-cols-5' : 'md:grid-cols-4'}`}>
+                <button onClick={() => router.push('/dashboard/ranchos')} className="p-5 md:p-6 bg-gradient-to-b from-gray-50 to-white rounded-[28px] border border-gray-200 hover:border-cownect-green/40 hover:-translate-y-0.5 transition-all text-center group shadow-sm hover:shadow-md">
+                  <MapPin className="w-7 h-7 mx-auto mb-3 text-gray-400 group-hover:text-cownect-green transition-colors" />
+                  <p className="font-medium text-sm text-gray-900">Ranchos</p>
                 </button>
-                <button onClick={() => router.push('/dashboard/produccion')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <Milk className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Produccion</p>
+                <button onClick={() => router.push('/dashboard/tareas')} className="p-5 md:p-6 bg-gradient-to-b from-gray-50 to-white rounded-[28px] border border-gray-200 hover:border-cownect-green/40 hover:-translate-y-0.5 transition-all text-center group shadow-sm hover:shadow-md">
+                  <CheckSquare className="w-7 h-7 mx-auto mb-3 text-gray-400 group-hover:text-cownect-green transition-colors" />
+                  <p className="font-medium text-sm text-gray-900">Tareas</p>
                 </button>
-                <button onClick={() => router.push('/dashboard/empleados')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <Users className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Empleados</p>
-                </button>
-                <button onClick={() => router.push('/dashboard/tareas')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <CheckSquare className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Tareas</p>
-                </button>
-                <button onClick={() => router.push('/dashboard/certificado')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                  <Award className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                  <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Certificado</p>
+                <button onClick={() => router.push('/dashboard/certificado')} className="p-5 md:p-6 bg-gradient-to-b from-gray-50 to-white rounded-[28px] border border-gray-200 hover:border-cownect-green/40 hover:-translate-y-0.5 transition-all text-center group shadow-sm hover:shadow-md">
+                  <Award className="w-7 h-7 mx-auto mb-3 text-gray-400 group-hover:text-cownect-green transition-colors" />
+                  <p className="font-medium text-sm text-gray-900">Certificado</p>
                 </button>
                 {isPremium && !user?.es_sesion_trabajador && (
-                  <button type="button" onClick={() => router.push('/dashboard/trabajadores')} className="p-6 bg-gray-50 rounded-[32px] border-2 border-transparent hover:border-cownect-green hover:bg-white transition-all text-center group shadow-md">
-                    <UserCog className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-cownect-green transition-colors" />
-                    <p className="font-black text-gray-900 text-xs uppercase tracking-tighter">Trabajadores</p>
+                  <button type="button" onClick={() => router.push('/dashboard/empleados')} className="p-5 md:p-6 bg-gradient-to-b from-gray-50 to-white rounded-[28px] border border-gray-200 hover:border-cownect-green/40 hover:-translate-y-0.5 transition-all text-center group shadow-sm hover:shadow-md">
+                    <Users className="w-7 h-7 mx-auto mb-3 text-gray-400 group-hover:text-cownect-green transition-colors" />
+                    <p className="font-medium text-sm text-gray-900">Empleados</p>
                   </button>
                 )}
               </div>

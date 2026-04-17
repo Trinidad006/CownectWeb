@@ -12,7 +12,13 @@ const DEFAULT_PASS = '12345'
 
 function isPremium(usuario: Record<string, unknown> | null): boolean {
   if (!usuario) return false
-  return usuario.plan === 'premium' || usuario.suscripcion_activa === true
+  const plan = String(usuario.plan || '').trim().toLowerCase()
+  const rawActiva = usuario.suscripcion_activa
+  const suscripcionActiva =
+    rawActiva === true ||
+    rawActiva === 1 ||
+    (typeof rawActiva === 'string' && ['true', '1', 'si', 'sí'].includes(rawActiva.trim().toLowerCase()))
+  return plan === 'premium' || suscripcionActiva
 }
 
 /**

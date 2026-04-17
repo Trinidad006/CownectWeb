@@ -33,10 +33,6 @@ export default function LoginForm() {
   const [success, setSuccess] = useState<string | null>(null)
   const [showUnverifiedBlock, setShowUnverifiedBlock] = useState(false)
 
-  const [showPinModal, setShowPinModal] = useState(false)
-  const [pinData, setPinData] = useState({ email: '', pin: '' })
-  const [pinLoading, setPinLoading] = useState(false)
-
   useEffect(() => {
     const registered = searchParams.get('registered')
     const reset = searchParams.get('reset')
@@ -49,30 +45,6 @@ export default function LoginForm() {
       setSuccess('Contraseña restablecida exitosamente. Ahora puedes iniciar sesión con tu nueva contraseña.')
     }
   }, [searchParams])
-
-  const handlePinLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setPinLoading(true)
-    setError(null)
-    try {
-      const response = await fetch('/api/auth/login-pin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pinData)
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Error en el inicio de sesión')
-      }
-
-      window.location.href = '/dashboard'
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setPinLoading(false)
-    }
-  }
 
   const handleResendVerification = async () => {
     if (!formData.email.trim() || !formData.password) {
@@ -251,60 +223,12 @@ export default function LoginForm() {
         <div className="flex-grow border-t border-gray-300"></div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setShowPinModal(true)}
-        className="w-full bg-white text-cownect-green border-2 border-cownect-green py-4 rounded-lg font-bold text-lg hover:bg-green-50 transition-all duration-200"
+      <Link
+        href="/worker-login"
+        className="block w-full bg-white text-cownect-green border-2 border-cownect-green py-4 rounded-lg font-bold text-lg hover:bg-green-50 transition-all duration-200 text-center"
       >
-        Ingresar como empleado (PIN)
-      </button>
-
-      {/* Modal de PIN para Empleados */}
-      {showPinModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">Acceso Empleados</h3>
-            <p className="text-gray-600 mb-6 text-center text-sm">Ingrese su correo y PIN de 4 dígitos proporcionado por su patrón.</p>
-            
-            <form onSubmit={handlePinLogin} className="space-y-4">
-              <input
-                type="email"
-                placeholder="Correo electrónico"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-cownect-green outline-none"
-                value={pinData.email}
-                onChange={e => setPinData({...pinData, email: e.target.value})}
-                required
-              />
-              <input
-                type="password"
-                placeholder="PIN de 4 dígitos"
-                maxLength={4}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-cownect-green outline-none text-center text-2xl tracking-[1em] font-bold"
-                value={pinData.pin}
-                onChange={e => setPinData({...pinData, pin: e.target.value.replace(/\D/g,'')})}
-                required
-              />
-              
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="submit" 
-                  disabled={pinLoading}
-                  className="flex-1 bg-cownect-green text-white py-3 rounded-lg font-bold hover:bg-opacity-90 disabled:opacity-50"
-                >
-                  {pinLoading ? 'Verificando...' : 'Entrar'}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => setShowPinModal(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+        Ingresar como trabajador
+      </Link>
     </form>
   )
 }

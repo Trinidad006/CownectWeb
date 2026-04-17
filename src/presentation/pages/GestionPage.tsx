@@ -16,6 +16,20 @@ import PesosChart from '../components/gestion/PesosChart'
 
 const animalRepository = new FirebaseAnimalRepository()
 
+function isAnimalMarkedInactive(animal: Animal): boolean {
+  const estado = String(animal.estado || '').trim().toLowerCase()
+  if (animal.activo === false) return true
+  return (
+    estado.includes('robado') ||
+    estado.includes('robo') ||
+    estado.includes('hurtado') ||
+    estado.includes('hurto') ||
+    estado.includes('muerto') ||
+    estado.includes('vendido') ||
+    estado.includes('inactivo')
+  )
+}
+
 function GestionContent() {
   const router = useRouter()
   const { user } = useAuth(false)
@@ -66,6 +80,9 @@ function GestionContent() {
 
   const [pesoForm, setPesoForm] = useState({ peso: '', fecha_registro: new Date().toISOString().split('T')[0], observaciones: '' })
   const [vacunaForm, setVacunaForm] = useState({ tipo_vacuna: '', fecha_aplicacion: new Date().toISOString().split('T')[0], proxima_dosis: '', observaciones: '' })
+  const [showDatosModal, setShowDatosModal] = useState(false)
+  const [datosTab, setDatosTab] = useState<'peso' | 'vacuna'>('peso')
+  const hoy = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     loadData()
@@ -74,9 +91,11 @@ function GestionContent() {
   useEffect(() => {
     if (selectedAnimal?.id && user?.id) {
       loadPesosYVacunaciones(selectedAnimal.id)
+      setShowDatosModal(false)
     } else {
       setPesos([])
       setVacunaciones([])
+      setShowDatosModal(false)
     }
   }, [selectedAnimal?.id, user?.id])
 
@@ -85,7 +104,7 @@ function GestionContent() {
     try {
       const data = await animalRepository.getAll(user.id)
       setTotalAnimalesRegistrados(data.length)
-      const filtrados = data.filter((a) => a.activo !== false)
+      const filtrados = data.filter((a) => !isAnimalMarkedInactive(a))
       setAnimales(filtrados)
     } catch (error) {
       console.error('Error:', error)
@@ -150,7 +169,7 @@ function GestionContent() {
         numero_identificacion: numeroNorm,
         usuario_id: user.id,
         rancho_id: user.rancho_actual_id || 'default',
-        activo: formData.estatus === 'Activo',
+        activo: formData.estatus === 'Activo' && !isAnimalMarkedInactive({ estado: formData.estado } as Animal),
       }
 
       let animalId = editingAnimal?.id
@@ -198,7 +217,7 @@ function GestionContent() {
       fecha_nacimiento: animal.fecha_nacimiento || '',
       sexo: animal.sexo as 'M' | 'H',
       estado: animal.estado || '',
-      estatus: animal.activo === false ? (animal.estado as any) || 'Muerto' : 'Activo',
+      estatus: isAnimalMarkedInactive(animal) ? ((animal.estado as any) || 'Muerto') : 'Activo',
       origen: animal.origen as any || 'comprado',
       madre_id: animal.madre_id || '',
       observaciones: animal.observaciones ? animal.observaciones.split(' · ') : [''],
@@ -237,17 +256,45 @@ function GestionContent() {
     e.preventDefault()
     if (!selectedAnimal?.id || !user?.id) return
     try {
-      await firestoreService.addPeso({
+      const pesoNum = Number(pesoForm.peso)
+      if (!Number.isFinite(pesoNum) || pesoNum <= 0) {
+        setErrorMessage('El peso debe ser un número mayor a 0.')
+        setShowErrorModal(true)
+        return
+      }
+      if (!pesoForm.fecha_registro) {
+        setErrorMessage('La fecha de registro es obligatoria.')
+        setShowErrorModal(true)
+        return
+      }
+      if (pesoForm.fecha_registro > hoy) {
+        setErrorMessage('No se puede registrar un peso en una fecha futura.')
+        setShowErrorModal(true)
+        return
+      }
+      const nuevoId = await firestoreService.addPeso({
         animal_id: selectedAnimal.id,
         usuario_id: user.id,
-        peso: Number(pesoForm.peso),
+        peso: pesoNum,
         fecha_registro: pesoForm.fecha_registro,
-        observaciones: pesoForm.observaciones,
+        observaciones: pesoForm.observaciones?.trim() || undefined,
+      })
+      setPesos((prev) => {
+        const next = [
+          { id: nuevoId, animal_id: selectedAnimal.id, usuario_id: user.id, peso: pesoNum, fecha_registro: pesoForm.fecha_registro, observaciones: pesoForm.observaciones?.trim() || undefined },
+          ...prev,
+        ]
+        next.sort((a: any, b: any) => (b.fecha_registro || '').localeCompare(a.fecha_registro || ''))
+        return next
       })
       setPesoForm({ peso: '', fecha_registro: new Date().toISOString().split('T')[0], observaciones: '' })
-      loadPesosYVacunaciones(selectedAnimal.id)
+      await loadPesosYVacunaciones(selectedAnimal.id)
+      setShowDatosModal(false)
+      setSuccessMessage('Peso registrado correctamente')
+      setShowSuccessModal(true)
     } catch (e) {
-      setErrorMessage('Error al guardar peso')
+      const msg = e instanceof Error ? e.message : 'Error al guardar peso'
+      setErrorMessage(msg)
       setShowErrorModal(true)
     }
   }
@@ -256,21 +303,41 @@ function GestionContent() {
     e.preventDefault()
     if (!selectedAnimal?.id || !user?.id) return
     try {
+      if (!vacunaForm.fecha_aplicacion) {
+        setErrorMessage('La fecha de aplicación es obligatoria.')
+        setShowErrorModal(true)
+        return
+      }
+      if (vacunaForm.fecha_aplicacion > hoy) {
+        setErrorMessage('No se puede registrar una vacunación en una fecha futura.')
+        setShowErrorModal(true)
+        return
+      }
+      if (vacunaForm.proxima_dosis && vacunaForm.proxima_dosis < vacunaForm.fecha_aplicacion) {
+        setErrorMessage('La próxima dosis no puede ser anterior a la fecha de aplicación.')
+        setShowErrorModal(true)
+        return
+      }
       await firestoreService.addVacunacion({
         animal_id: selectedAnimal.id,
         usuario_id: user.id,
         tipo_vacuna: vacunaForm.tipo_vacuna,
         fecha_aplicacion: vacunaForm.fecha_aplicacion,
         proxima_dosis: vacunaForm.proxima_dosis || undefined,
-        observaciones: vacunaForm.observaciones,
+        observaciones: vacunaForm.observaciones?.trim() || undefined,
       })
       setVacunaForm({ tipo_vacuna: '', fecha_aplicacion: new Date().toISOString().split('T')[0], proxima_dosis: '', observaciones: '' })
-      loadPesosYVacunaciones(selectedAnimal.id)
+      await loadPesosYVacunaciones(selectedAnimal.id)
+      setShowDatosModal(false)
+      setSuccessMessage('Vacunación registrada correctamente')
+      setShowSuccessModal(true)
     } catch (e) {
-      setErrorMessage('Error al guardar vacuna')
+      const msg = e instanceof Error ? e.message : 'Error al guardar vacuna'
+      setErrorMessage(msg)
       setShowErrorModal(true)
     }
   }
+
 
   const ultimoPeso = pesos.length > 0 ? pesos[0] : null
   const chartData = useMemo(() => pesos.map((p) => ({ peso: p.peso, fecha_registro: p.fecha_registro })), [pesos])
@@ -313,6 +380,24 @@ function GestionContent() {
                   className="bg-cownect-green text-white px-6 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg"
                 >
                   + Agregar Animal
+                </button>
+                {puedeEditar && (
+                  <button
+                    onClick={() => router.push('/dashboard/gestion/lote')}
+                    className="ml-2 bg-white text-cownect-green border-2 border-cownect-green px-6 py-3 rounded-xl font-bold hover:bg-cownect-green hover:text-white transition-all shadow-sm"
+                  >
+                    + Agregar por lote
+                  </button>
+                )}
+              </div>
+
+              <div className="mb-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => router.push('/dashboard/animales/inactivos')}
+                  className="bg-white text-gray-700 border-2 border-gray-200 px-5 py-2.5 rounded-xl font-semibold hover:border-cownect-green hover:text-cownect-green transition-all shadow-sm"
+                >
+                  Ver animales inactivos
                 </button>
               </div>
 
@@ -364,9 +449,18 @@ function GestionContent() {
                             <p className="text-gray-500 font-bold uppercase text-xs">{selectedAnimal.nombre || 'Sin nombre'}</p>
                           </div>
                         </div>
-                        {puedeEditar && (
-                          <button onClick={() => handleEdit(selectedAnimal)} className="text-cownect-green font-bold text-sm hover:underline">Editar Datos</button>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {puedeEditar && (
+                            <button onClick={() => handleEdit(selectedAnimal)} className="text-cownect-green font-bold text-sm hover:underline">Editar Datos</button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAnimal(null)}
+                            className="text-gray-500 font-semibold text-sm hover:text-gray-800"
+                          >
+                            Cerrar
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -390,7 +484,43 @@ function GestionContent() {
 
                       <PesosChart pesos={chartData} />
 
+                      <div className="bg-white rounded-2xl border border-gray-200 p-4 mt-6">
+                        <h3 className="text-base font-bold text-gray-900 mb-3">Vacunas registradas</h3>
+                        {vacunaciones.length === 0 ? (
+                          <p className="text-sm text-gray-500">No hay vacunas registradas.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {vacunaciones.slice(0, 8).map((v: any) => (
+                              <div key={v.id} className="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">
+                                {v.tipo_vacuna} - {v.fecha_aplicacion}
+                                {v.proxima_dosis ? ` - Próx. dosis ${v.proxima_dosis}` : ''}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex flex-wrap gap-3 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDatosTab('peso')
+                            setShowDatosModal(true)
+                          }}
+                          className="flex-1 min-w-[140px] bg-cownect-green text-white py-3 rounded-xl font-bold text-sm"
+                        >
+                          Registrar peso
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDatosTab('vacuna')
+                            setShowDatosModal(true)
+                          }}
+                          className="flex-1 min-w-[140px] bg-blue-600 text-white py-3 rounded-xl font-bold text-sm"
+                        >
+                          Registrar vacunación
+                        </button>
                         <button type="button" onClick={() => router.push(`/dashboard/eventos?id=${selectedAnimal.id}`)} className="flex-1 min-w-[140px] bg-cownect-dark-green text-white py-3 rounded-xl font-bold text-sm">Historial de eventos</button>
                         <button onClick={() => router.push(`/dashboard/documentacion?id=${selectedAnimal.id}`)} className="flex-1 min-w-[140px] bg-cownect-green text-white py-3 rounded-xl font-bold text-sm">Documentación</button>
                         {puedeEditar && (
@@ -502,6 +632,104 @@ function GestionContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDatosModal && selectedAnimal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-4" onClick={() => setShowDatosModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Agregar datos a {selectedAnimal.numero_identificacion || 'animal'}</h3>
+              <button type="button" onClick={() => setShowDatosModal(false)} className="text-gray-500 font-semibold hover:text-gray-800">
+                Cerrar
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => setDatosTab('peso')}
+                className={`py-2 rounded-lg text-sm font-bold ${datosTab === 'peso' ? 'bg-cownect-green text-white' : 'bg-gray-100 text-gray-700'}`}
+              >
+                Registrar peso
+              </button>
+              <button
+                type="button"
+                onClick={() => setDatosTab('vacuna')}
+                className={`py-2 rounded-lg text-sm font-bold ${datosTab === 'vacuna' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+              >
+                Registrar vacunación
+              </button>
+            </div>
+
+            {datosTab === 'peso' ? (
+              <form onSubmit={handleAddPeso} className="space-y-3">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Kg"
+                  value={pesoForm.peso}
+                  onChange={(e) => setPesoForm({ ...pesoForm, peso: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  required
+                />
+                <input
+                  type="date"
+                  value={pesoForm.fecha_registro}
+                  onChange={(e) => setPesoForm({ ...pesoForm, fecha_registro: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  max={hoy}
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Observaciones"
+                  value={pesoForm.observaciones}
+                  onChange={(e) => setPesoForm({ ...pesoForm, observaciones: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+                <button type="submit" className="w-full bg-cownect-dark-green text-white py-2.5 rounded-lg font-bold">
+                  Guardar peso
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleAddVacuna} className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Tipo de vacuna"
+                  value={vacunaForm.tipo_vacuna}
+                  onChange={(e) => setVacunaForm({ ...vacunaForm, tipo_vacuna: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  required
+                />
+                <input
+                  type="date"
+                  value={vacunaForm.fecha_aplicacion}
+                  onChange={(e) => setVacunaForm({ ...vacunaForm, fecha_aplicacion: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  max={hoy}
+                  required
+                />
+                <input
+                  type="date"
+                  placeholder="Próxima dosis"
+                  value={vacunaForm.proxima_dosis}
+                  onChange={(e) => setVacunaForm({ ...vacunaForm, proxima_dosis: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+                <input
+                  type="text"
+                  placeholder="Observaciones"
+                  value={vacunaForm.observaciones}
+                  onChange={(e) => setVacunaForm({ ...vacunaForm, observaciones: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+                <button type="submit" className="w-full bg-blue-700 text-white py-2.5 rounded-lg font-bold">
+                  Guardar vacunación
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

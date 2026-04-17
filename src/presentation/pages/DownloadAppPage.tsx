@@ -266,7 +266,7 @@ export default function DownloadAppPage() {
               <AlertTriangle className="h-6 w-6 text-orange-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-orange-900 font-bold mb-2">
-                  ⚠️ ADVERTENCIA IMPORTANTE:
+                  ADVERTENCIA IMPORTANTE:
                 </p>
                 <ul className="text-orange-800 text-sm space-y-1 list-disc list-inside">
                   <li>Las snapshots son versiones experimentales en desarrollo</li>
@@ -306,7 +306,7 @@ export default function DownloadAppPage() {
         {/* Nota de seguridad */}
         <div className="mt-8 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-6">
           <p className="text-yellow-800 font-semibold text-center">
-            ⚠️ Nota: La aplicación Android se descarga directamente desde nuestro
+            Nota: La aplicación Android se descarga directamente desde nuestro
             servidor. Asegúrate de tener activada la opción de &quot;Fuentes
             desconocidas&quot; en tu dispositivo.
           </p>

@@ -25,6 +25,7 @@ interface Empleado {
   nombre: string
   apellido?: string
   cargo?: string
+  aliases?: string[]
 }
 
 function TareasContent() {
@@ -43,6 +44,13 @@ function TareasContent() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  const findEmpleadoByAsignado = (asignadoId?: string) => {
+    if (!asignadoId) return undefined
+    return empleados.find(
+      (e) => e.id === asignadoId || (Array.isArray(e.aliases) && e.aliases.includes(asignadoId))
+    )
+  }
 
   useEffect(() => {
     if (user?.id) {
@@ -283,7 +291,7 @@ function TareasContent() {
                   {tareas.length > 0 ? (
                     <div className="grid grid-cols-1 gap-4 mt-6">
                       {tareas.map(tarea => {
-                        const resp = empleados.find(e => e.id === tarea.asignado_a);
+                        const resp = findEmpleadoByAsignado(tarea.asignado_a)
                         return (
                           <div key={tarea.id} className="bg-white border border-gray-100 rounded-xl p-6 shadow-md hover:shadow-lg transition-all border-l-4 border-l-cownect-green">
                             <div className="flex justify-between items-start">

@@ -51,6 +51,42 @@ export async function obtenerEmailPorPinKiosko(pin: string): Promise<{
   return { email: typeof email === 'string' ? email : null, error: email ? undefined : 'no_encontrado' }
 }
 
+/** Resuelve UID + email del trabajador por PIN único (rol TRABAJADOR). */
+export async function obtenerTrabajadorPorPinKiosko(pin: string): Promise<{
+  uid: string | null
+  email: string | null
+  error?: 'no_encontrado' | 'ambiguo'
+}> {
+  if (hasAdminCredentials()) {
+    const db = getFirebaseAdminDb()
+    const snap = await db.collection(USUARIOS).where('pin_kiosko', '==', pin).limit(25).get()
+    const workers = snap.docs.filter((d) => d.data().rol === 'TRABAJADOR')
+    if (workers.length === 0) return { uid: null, email: null, error: 'no_encontrado' }
+    if (workers.length > 1) return { uid: null, email: null, error: 'ambiguo' }
+    const worker = workers[0]
+    const email = worker.data().email
+    return {
+      uid: worker.id,
+      email: typeof email === 'string' ? email : null,
+      error: email ? undefined : 'no_encontrado',
+    }
+  }
+
+  const db = getFirebaseDb()
+  const q = query(collection(db, USUARIOS), where('pin_kiosko', '==', pin), limit(25))
+  const snap = await getDocs(q)
+  const workers = snap.docs.filter((d) => d.data().rol === 'TRABAJADOR')
+  if (workers.length === 0) return { uid: null, email: null, error: 'no_encontrado' }
+  if (workers.length > 1) return { uid: null, email: null, error: 'ambiguo' }
+  const worker = workers[0]
+  const email = worker.data().email
+  return {
+    uid: worker.id,
+    email: typeof email === 'string' ? email : null,
+    error: email ? undefined : 'no_encontrado',
+  }
+}
+
 /** Valida combinación correo + PIN (compatibilidad). */
 export async function validarEmailPinKiosko(email: string, pin: string): Promise<boolean> {
   if (hasAdminCredentials()) {

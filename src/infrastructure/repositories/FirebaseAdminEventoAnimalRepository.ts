@@ -40,9 +40,13 @@ export class FirebaseAdminEventoAnimalRepository implements EventoAnimalReposito
       .collection(EVENTOS_ANIMAL_COLLECTION)
       .where('animal_id', '==', animalId)
       .where('usuario_id', '==', userId)
-      .orderBy('fecha_evento', orden)
       .get()
-    return snapshot.docs.map((d) => toEvento(d.id, d.data()))
+    const eventos = snapshot.docs.map((d) => toEvento(d.id, d.data()))
+    eventos.sort((a, b) => {
+      const cmp = (a.fecha_evento || '').localeCompare(b.fecha_evento || '')
+      return orden === 'asc' ? cmp : -cmp
+    })
+    return eventos
   }
 
   async getUltimoPorTipo(
@@ -56,11 +60,11 @@ export class FirebaseAdminEventoAnimalRepository implements EventoAnimalReposito
       .where('animal_id', '==', animalId)
       .where('usuario_id', '==', userId)
       .where('tipo_evento', '==', tipo)
-      .orderBy('fecha_evento', 'desc')
-      .limit(1)
       .get()
-    const doc = snapshot.docs[0]
-    return doc ? toEvento(doc.id, doc.data()) : null
+    const list = snapshot.docs.map((d) => toEvento(d.id, d.data()))
+    if (list.length === 0) return null
+    list.sort((a, b) => (b.fecha_evento || '').localeCompare(a.fecha_evento || ''))
+    return list[0]
   }
 
   async tieneEventoCierre(animalId: string, userId: string): Promise<boolean> {

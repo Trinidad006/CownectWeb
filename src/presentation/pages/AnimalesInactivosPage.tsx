@@ -9,8 +9,23 @@ import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { Animal } from '@/domain/entities/Animal'
 import BackButton from '../components/ui/BackButton'
 import Sidebar from '../components/layouts/Sidebar'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { getFirebaseDb } from '@/infrastructure/config/firebase'
+
+function isAnimalMarkedInactive(animal: Animal): boolean {
+  const estado = String(animal.estado || '').trim().toLowerCase()
+  if (animal.activo === false) return true
+  return (
+    estado.includes('robado') ||
+    estado.includes('robo') ||
+    estado.includes('hurtado') ||
+    estado.includes('hurto') ||
+    estado.includes('muerto') ||
+    estado.includes('vendido') ||
+    estado.includes('inactivo')
+  )
+}
 
 function AnimalesInactivosContent() {
   const router = useRouter()
@@ -26,20 +41,42 @@ function AnimalesInactivosContent() {
   const loadInactivos = async () => {
     try {
       setLoading(true)
-      const db = getFirebaseDb()
-      // Usamos la colección 'animales' que es la estándar del proyecto
-      const q = query(
-        collection(db, 'animales'),
-        where('usuario_id', '==', user!.id)
-      )
-      const snapshot = await getDocs(q)
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as any[]
-      
-      // Filtramos manualmente por activo === false para asegurar que vemos los inactivos
-      const inactivos = list.filter(a => a.activo === false)
+      const res = await fetchWithAuth('/api/animales/inactivos')
+      if (!res.ok) {
+        throw new Error(`API inactivos ${res.status}`)
+      }
+      const data = await res.json()
+      const list = Array.isArray(data?.animales) ? data.animales : []
+      const inactivos = list.filter((a: Animal) => isAnimalMarkedInactive(a))
       setAnimales(inactivos as Animal[])
     } catch (e) {
-      console.error('Error cargando inactivos:', e)
+      console.error('Error cargando inactivos por API, usando fallback cliente:', e)
+      try {
+        if (!user?.id) {
+          setAnimales([])
+          return
+        }
+        const db = getFirebaseDb()
+        const qByUsuario = query(collection(db, 'animales'), where('usuario_id', '==', user.id))
+        const qByRancho = user.rancho_actual_id
+          ? query(collection(db, 'animales'), where('rancho_id', '==', user.rancho_actual_id))
+          : null
+        const [snapUsuario, snapRancho] = await Promise.all([
+          getDocs(qByUsuario),
+          qByRancho ? getDocs(qByRancho) : Promise.resolve(null),
+        ])
+        const mergedMap = new Map<string, Animal>()
+        for (const d of snapUsuario.docs) mergedMap.set(d.id, { id: d.id, ...(d.data() as Record<string, unknown>) } as Animal)
+        if (snapRancho) {
+          for (const d of snapRancho.docs) mergedMap.set(d.id, { id: d.id, ...(d.data() as Record<string, unknown>) } as Animal)
+        }
+        const list = Array.from(mergedMap.values())
+        const inactivos = list.filter((a) => isAnimalMarkedInactive(a))
+        setAnimales(inactivos)
+      } catch (fallbackError) {
+        console.error('Error cargando inactivos en fallback cliente:', fallbackError)
+        setAnimales([])
+      }
     } finally {
       setLoading(false)
     }

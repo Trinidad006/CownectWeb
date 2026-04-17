@@ -1,5 +1,5 @@
-import ProduccionPage from '@/presentation/pages/ProduccionPage'
+import { redirect } from 'next/navigation'
 
 export default function Page() {
-  return <ProduccionPage />
+  redirect('/dashboard')
 }
