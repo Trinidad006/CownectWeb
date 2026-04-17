@@ -29,7 +29,7 @@ async function mensajeErrorApi(response: Response): Promise<string> {
   if (response.status === 503) {
     return text.length > 0 && text.length < 400
       ? text
-      : 'El servidor no tiene Firebase Admin configurado. Revisa .env.local (cuenta de servicio).'
+      : 'El servidor no tiene Firebase Admin configurado. Revisa .env.local y la cuenta de servicio.'
   }
   if (response.status === 403) {
     return 'No tienes permiso para esta acción.'
@@ -37,7 +37,7 @@ async function mensajeErrorApi(response: Response): Promise<string> {
   if (response.status >= 500) {
     return 'Error en el servidor. Comprueba Firebase Admin y la consola del terminal.'
   }
-  return `No se pudo completar la acción (código ${response.status}).`
+  return `No se pudo completar la acción. Código: ${response.status}.`
 }
 
 function EmpleadosContent() {
@@ -339,7 +339,7 @@ function EmpleadosContent() {
               Se generará un PIN único de 4 dígitos para que el empleado entre con «Entrar como empleado».
             </p>
             <p className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 mb-8 leading-relaxed">
-              <strong>Correo y teléfono del trabajador:</strong> el correo debe ser <strong>diferente al tuyo</strong> (cada usuario en Firebase tiene un email único). Si pones teléfono, que no sea el mismo que el del dueño; si no tienes otro número, déjalo vacío.
+              <strong>Correo y teléfono del trabajador:</strong> el correo debe ser <strong>diferente al tuyo</strong>; en Firebase cada cuenta necesita un correo único. Si pones teléfono, que no sea el mismo que el del dueño; si no tienes otro número, déjalo vacío.
             </p>
             {errorMessage && (
               <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm font-semibold">
@@ -351,8 +351,8 @@ function EmpleadosContent() {
                 <input placeholder="Nombre" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.nombre} onChange={e => setNewEmpleado({...newEmpleado, nombre: e.target.value})} required />
                 <input placeholder="Apellido" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.apellido} onChange={e => setNewEmpleado({...newEmpleado, apellido: e.target.value})} required />
               </div>
-              <input type="email" autoComplete="off" placeholder="Correo del empleado (distinto al tuyo)" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.email} onChange={e => setNewEmpleado({...newEmpleado, email: e.target.value})} required />
-              <input type="tel" autoComplete="off" placeholder="Teléfono del empleado (opcional)" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.telefono} onChange={e => setNewEmpleado({...newEmpleado, telefono: e.target.value})} />
+              <input type="email" autoComplete="off" placeholder="Correo del empleado" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.email} onChange={e => setNewEmpleado({...newEmpleado, email: e.target.value})} required />
+              <input type="tel" autoComplete="off" placeholder="Teléfono del empleado — opcional" className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl focus:ring-2 focus:ring-cownect-green outline-none font-bold" value={newEmpleado.telefono} onChange={e => setNewEmpleado({...newEmpleado, telefono: e.target.value})} />
               <div className="flex flex-col gap-3 pt-6">
                 <button
                   type="submit"
@@ -380,10 +380,10 @@ function EmpleadosContent() {
       {pinRecienGenerado && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[10000] p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center border-4 border-cownect-green">
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">PIN de acceso (único)</p>
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">PIN de acceso</p>
             <p className="text-5xl font-black tracking-[0.3em] text-cownect-dark-green mb-6">{pinRecienGenerado}</p>
             <p className="text-gray-600 text-sm mb-8 leading-relaxed">
-              Compártelo solo con este empleado. Con él inicia sesión en la app en «Entrar como empleado (PIN único)». No volverá a mostrarse aquí de forma destacada; el PIN sigue visible en la lista del equipo.
+              Compártelo solo con este empleado. En la app puede iniciar sesión con «Entrar como empleado» y este PIN. No volverá a mostrarse aquí de forma destacada; el PIN sigue visible en la lista del equipo.
             </p>
             <button
               type="button"

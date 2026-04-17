@@ -451,7 +451,7 @@ export default function DashboardHeader() {
                     className="w-5 h-5 border-2 border-gray-300 rounded focus:outline-none focus:border-cownect-green"
                   />
                   <label htmlFor="perfil-publico" className="text-base font-semibold text-black">
-                    Hacer mi perfil visible para otros ganaderos (perfil público)
+                    Hacer mi perfil visible para otros ganaderos — perfil público
                   </label>
                 </div>
 
@@ -481,7 +481,7 @@ export default function DashboardHeader() {
                 </div>
 
                 <div>
-                  <label className="block text-base font-bold text-black mb-2">Wallet (opcional)</label>
+                  <label className="block text-base font-bold text-black mb-2">Wallet — opcional</label>
                   <input
                     type="text"
                     value={perfilData.wallet_address}

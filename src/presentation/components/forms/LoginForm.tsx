@@ -15,7 +15,7 @@ const INSTRUCCIONES_VERIFICACION = (
       <li>Revisa tu <strong>bandeja de entrada</strong> del correo con el que te registraste.</li>
       <li>Revisa también la carpeta de <strong>Correo no deseado / Spam</strong>; el correo suele llegar ahí.</li>
       <li>Haz clic en el <strong>enlace del correo</strong> para activar tu cuenta.</li>
-      <li>Si no llega en unos minutos, usa el botón «Reenviar correo de verificación» (usa el mismo email y contraseña).</li>
+      <li>Si no llega en unos minutos, usa el botón «Reenviar correo de verificación» con el mismo correo y contraseña.</li>
     </ul>
   </>
 )
@@ -265,13 +265,13 @@ export default function LoginForm() {
         }}
         className="w-full bg-white text-cownect-green border-2 border-cownect-green py-4 rounded-lg font-bold text-lg hover:bg-green-50 transition-all duration-200"
       >
-        Entrar como empleado (PIN único)
+        Entrar como empleado
       </button>
 
       {showPinModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">Acceso empleado (kiosko)</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">Acceso de empleado</h3>
             <p className="text-gray-600 mb-6 text-center text-sm">
               Introduce el PIN de 4 dígitos que te dio el dueño del rancho. Es único: no hace falta correo.
             </p>

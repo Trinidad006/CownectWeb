@@ -69,7 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
           path: '/dashboard/certificado',
         },
         {
-          name: 'Empleados (Kiosko)',
+          name: 'Empleados',
           icon: <Users className="w-5 h-5" />,
           path: '/dashboard/empleados',
         },

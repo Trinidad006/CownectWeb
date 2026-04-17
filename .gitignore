@@ -31,6 +31,11 @@ yarn-error.log*
 # Google Drive service account (credenciales)
 google-drive-service-account.json
 
+# Firebase Admin (cuenta de servicio — nunca subir a Git)
+firebase-service-account.json
+*-firebase-adminsdk-*.json
+secrets/*.json
+
 # vercel
 .vercel
 

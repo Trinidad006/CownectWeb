@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'El servidor no tiene Firebase Admin configurado (ruta al JSON o credenciales en .env.local). Sin eso no se pueden crear empleados.',
+            'Firebase Admin no está configurado. En .env.local define una de estas opciones: FIREBASE_SERVICE_ACCOUNT_PATH=./tu-clave.json (archivo en el proyecto), GOOGLE_APPLICATION_CREDENTIALS, FIREBASE_SERVICE_ACCOUNT_JSON (JSON en una línea), o FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY + FIREBASE_PROJECT_ID. Reinicia el servidor tras guardar.',
         },
         { status: 503 }
       )
