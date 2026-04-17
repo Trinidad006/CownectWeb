@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getFirebaseAdminAuth, hasAdminCredentials } from '@/infrastructure/config/firebaseAdmin'
+import {
+  ADMIN_CREDENTIALS_MISSING,
+  getFirebaseAdminAuth,
+  hasAdminCredentials,
+} from '@/infrastructure/config/firebaseAdmin'
 import { firestoreAdminServer } from '@/infrastructure/services/firestoreAdminServer'
 import { hashWorkerPassword } from '@/lib/workerPassword'
 
@@ -30,7 +34,7 @@ async function requireOwnerPremium(request: NextRequest): Promise<{ ownerUid: st
  */
 export async function GET(request: NextRequest) {
   if (!hasAdminCredentials()) {
-    return NextResponse.json({ error: 'Servidor sin credenciales de administración.' }, { status: 503 })
+    return NextResponse.json(ADMIN_CREDENTIALS_MISSING, { status: 503 })
   }
   try {
     const auth = await requireOwnerPremium(request)
@@ -51,7 +55,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   if (!hasAdminCredentials()) {
-    return NextResponse.json({ error: 'Servidor sin credenciales de administración.' }, { status: 503 })
+    return NextResponse.json(ADMIN_CREDENTIALS_MISSING, { status: 503 })
   }
   try {
     const auth = await requireOwnerPremium(request)

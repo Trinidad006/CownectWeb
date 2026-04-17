@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getFirebaseAdminAuth, hasAdminCredentials } from '@/infrastructure/config/firebaseAdmin'
+import {
+  ADMIN_CREDENTIALS_MISSING,
+  getFirebaseAdminAuth,
+  hasAdminCredentials,
+} from '@/infrastructure/config/firebaseAdmin'
 import { firestoreAdminServer } from '@/infrastructure/services/firestoreAdminServer'
 
 function isPremium(usuario: Record<string, unknown> | null): boolean {
@@ -16,7 +20,7 @@ export async function PATCH(
   context: { params: Promise<{ workerId: string }> }
 ) {
   if (!hasAdminCredentials()) {
-    return NextResponse.json({ error: 'Servidor sin credenciales de administración.' }, { status: 503 })
+    return NextResponse.json(ADMIN_CREDENTIALS_MISSING, { status: 503 })
   }
   try {
     const authHeader = request.headers.get('authorization') || ''

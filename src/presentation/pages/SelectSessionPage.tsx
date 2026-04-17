@@ -11,6 +11,7 @@ function SelectSessionContent() {
   const router = useRouter()
   const { user, loading } = useAuth(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [msgHint, setMsgHint] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
@@ -34,6 +35,7 @@ function SelectSessionContent() {
 
   const crearTrabajadorPredeterminado = async () => {
     setMsg(null)
+    setMsgHint(null)
     setBusy(true)
     try {
       const auth = getFirebaseAuth()
@@ -110,7 +112,12 @@ function SelectSessionContent() {
           >
             {busy ? 'Procesando…' : 'Crear trabajador predeterminado'}
           </button>
-          {msg && <p className="text-sm text-center text-gray-700">{msg}</p>}
+          {msg && (
+            <div className="text-sm text-center text-gray-700 space-y-2">
+              <p>{msg}</p>
+              {msgHint && <p className="text-xs text-gray-600 leading-relaxed">{msgHint}</p>}
+            </div>
+          )}
         </div>
       </div>
     </div>

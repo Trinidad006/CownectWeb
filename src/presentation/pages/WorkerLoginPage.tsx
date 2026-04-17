@@ -12,11 +12,13 @@ function WorkerLoginForm() {
   const router = useRouter()
   const [form, setForm] = useState({ ownerEmail: '', username: '', password: '' })
   const [error, setError] = useState<string | null>(null)
+  const [errorHint, setErrorHint] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setErrorHint(null)
     setLoading(true)
     try {
       const res = await fetch('/api/trabajadores/login', {
@@ -31,6 +33,7 @@ function WorkerLoginForm() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.customToken) {
         setError(data.error || 'No se pudo iniciar sesión.')
+        setErrorHint(typeof data.hint === 'string' ? data.hint : null)
         return
       }
       const auth = getFirebaseAuth()
@@ -69,7 +72,12 @@ function WorkerLoginForm() {
         onChange={(e) => setForm({ ...form, password: e.target.value })}
         required
       />
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="text-sm space-y-2">
+          <p className="text-red-600">{error}</p>
+          {errorHint && <p className="text-xs text-gray-700 leading-relaxed">{errorHint}</p>}
+        </div>
+      )}
       <button
         type="submit"
         disabled={loading}

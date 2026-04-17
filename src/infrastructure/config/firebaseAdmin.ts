@@ -103,6 +103,13 @@ export function getFirebaseAdminAuth(): import('firebase-admin/auth').Auth {
   return admin.auth()
 }
 
+/** Cuerpo JSON para 503 cuando falta credencial de Admin (API trabajadores). */
+export const ADMIN_CREDENTIALS_MISSING = {
+  error: 'Servidor sin credenciales de administración.',
+  hint:
+    'Configura Firebase Admin en el servidor (ver .env.example): FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_SERVICE_ACCOUNT_PATH, GOOGLE_APPLICATION_CREDENTIALS, o FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY. Reinicia el servidor tras guardar.',
+} as const
+
 export function hasAdminCredentials(): boolean {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()) {
     try {

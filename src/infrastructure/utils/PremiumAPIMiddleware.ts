@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ADMIN_CREDENTIALS_MISSING, hasAdminCredentials } from '@/infrastructure/config/firebaseAdmin'
 import { getCurrentUserFromRequest } from '@/infrastructure/utils/authServer'
 import { PremiumValidator } from '@/domain/validators/PremiumValidator'
 import type { User } from '@/domain/entities/User'
@@ -21,6 +22,28 @@ export class PremiumAPIMiddleware {
     tipoValidacion: PremiumValidationType
   ): Promise<{ valido: boolean; response?: NextResponse; user?: any }> {
     try {
+      const authHeader = request.headers.get('authorization') || ''
+      const m = authHeader.match(/^Bearer\s+(.+)$/i)
+      if (!m || !m[1].trim()) {
+        return {
+          valido: false,
+          response: NextResponse.json(
+            {
+              error:
+                'No autenticado. Envía el encabezado Authorization: Bearer <token> (ID token de Firebase).',
+            },
+            { status: 401 }
+          ),
+        }
+      }
+
+      if (!hasAdminCredentials()) {
+        return {
+          valido: false,
+          response: NextResponse.json(ADMIN_CREDENTIALS_MISSING, { status: 503 }),
+        }
+      }
+
       const apiUser = await getCurrentUserFromRequest(request)
       if (!apiUser) {
         return {
@@ -28,7 +51,7 @@ export class PremiumAPIMiddleware {
           response: NextResponse.json(
             {
               error:
-                'No autenticado. Envía el encabezado Authorization: Bearer <token> (ID token de Firebase).',
+                'No se pudo validar el token. Vuelve a iniciar sesión o revisa la configuración de Firebase Admin en el servidor.',
             },
             { status: 401 }
           ),

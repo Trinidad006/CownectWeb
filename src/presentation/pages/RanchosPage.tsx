@@ -12,7 +12,9 @@ import { fetchWithAuth } from '../utils/fetchWithAuth'
 interface Rancho {
   id: string
   nombre: string
-  ubicacion?: string
+  ciudad?: string
+  pais?: string
+  direccion?: string
   hectareas?: number
   descripcion?: string
   tipos_ganado?: string[]
@@ -32,6 +34,7 @@ function RanchosContent() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [errorHint, setErrorHint] = useState<string | null>(null)
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
@@ -40,14 +43,23 @@ function RanchosContent() {
 
   const loadData = async () => {
     if (!user?.id) return
+    setError('')
+    setErrorHint(null)
     try {
       const response = await fetchWithAuth(`/api/rancho?usuario_id=${user.id}`)
+      const data = await response.json().catch(() => ({}))
       if (response.ok) {
-        const data = await response.json()
-        setRanchos(data)
+        const list = Array.isArray(data.ranchos) ? data.ranchos : []
+        setRanchos(list)
+      } else {
+        setError(typeof data.error === 'string' ? data.error : 'Error al cargar ranchos')
+        setErrorHint(typeof data.hint === 'string' ? data.hint : null)
+        setRanchos([])
       }
     } catch (err) {
       console.error('Error cargando ranchos:', err)
+      setError('Error al cargar ranchos')
+      setRanchos([])
     } finally {
       setLoading(false)
     }
@@ -58,27 +70,32 @@ function RanchosContent() {
     if (!user?.id) return
     setSubmitting(true)
     setError('')
+    setErrorHint(null)
     setSuccess('')
 
     try {
+      const hectareasNum = parseFloat(formData.hectareas)
       const response = await fetchWithAuth('/api/rancho', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           usuario_id: user.id,
-          ...formData,
-          hectareas: parseFloat(formData.hectareas)
-        })
+          nombre: formData.nombre.trim(),
+          ciudad: formData.ubicacion.trim() || undefined,
+          descripcion: formData.descripcion.trim() || undefined,
+          hectareas: Number.isFinite(hectareasNum) ? hectareasNum : undefined,
+        }),
       })
 
+      const data = await response.json().catch(() => ({}))
       if (response.ok) {
         setSuccess('Rancho registrado exitosamente')
         setFormData({ nombre: '', ubicacion: '', hectareas: '', descripcion: '' })
         setShowForm(false)
         loadData()
       } else {
-        const data = await response.json()
-        setError(data.error || 'Error al guardar rancho')
+        setError(typeof data.error === 'string' ? data.error : 'Error al guardar rancho')
+        setErrorHint(typeof data.hint === 'string' ? data.hint : null)
       }
     } catch (err) {
       setError('Error de conexión')
@@ -118,7 +135,12 @@ function RanchosContent() {
                 </button>
               </div>
 
-              {error && <div className="mb-6 p-4 bg-red-50 text-red-800 rounded-xl border border-red-200">{error}</div>}
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 text-red-800 rounded-xl border border-red-200 space-y-2">
+                  <p>{error}</p>
+                  {errorHint && <p className="text-xs text-gray-700 leading-relaxed">{errorHint}</p>}
+                </div>
+              )}
               {success && <div className="mb-6 p-4 bg-green-50 text-cownect-green rounded-xl border border-green-200">{success}</div>}
 
               {showForm && (
@@ -185,7 +207,10 @@ function RanchosContent() {
                     </div>
                     <h3 className="text-xl font-black text-gray-900 mb-1">{rancho.nombre}</h3>
                     <p className="text-gray-500 text-sm font-medium mb-4 flex items-center gap-1">
-                      📍 {rancho.ubicacion || 'Ubicación no especificada'}
+                      📍{' '}
+                      {[rancho.ciudad, rancho.pais].filter(Boolean).join(', ') ||
+                        rancho.direccion ||
+                        'Ubicación no especificada'}
                     </p>
                     <div className="flex justify-between items-center pt-4 border-t border-gray-50">
                       <span className="text-xs font-bold text-gray-400 uppercase">Superficie</span>

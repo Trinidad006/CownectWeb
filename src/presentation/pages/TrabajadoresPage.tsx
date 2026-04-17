@@ -17,6 +17,7 @@ function TrabajadoresContent() {
   const [lista, setLista] = useState<TrabajadorRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorHint, setErrorHint] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [nuevoUsuario, setNuevoUsuario] = useState('')
   const [nuevaPassword, setNuevaPassword] = useState('')
@@ -27,13 +28,17 @@ function TrabajadoresContent() {
   const cargar = async () => {
     if (!user?.id || user.es_sesion_trabajador) return
     setError(null)
+    setErrorHint(null)
     try {
       const auth = getFirebaseAuth()
       const token = await auth.currentUser?.getIdToken()
       if (!token) throw new Error('Sesión no válida')
       const res = await fetch('/api/trabajadores', { headers: { Authorization: `Bearer ${token}` } })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error al cargar')
+      if (!res.ok) {
+        setErrorHint(typeof data.hint === 'string' ? data.hint : null)
+        throw new Error(data.error || 'Error al cargar')
+      }
       setLista(data.trabajadores || [])
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error')
@@ -63,6 +68,7 @@ function TrabajadoresContent() {
   const crearTrabajador = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setErrorHint(null)
     setSuccess(null)
     setCreando(true)
     try {
@@ -75,7 +81,10 @@ function TrabajadoresContent() {
         body: JSON.stringify({ username: nuevoUsuario.trim(), password: nuevaPassword }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo crear')
+      if (!res.ok) {
+        setErrorHint(typeof data.hint === 'string' ? data.hint : null)
+        throw new Error(data.error || 'No se pudo crear')
+      }
       setSuccess(`Trabajador «${data.username}» creado. Comunica las credenciales de forma segura.`)
       setNuevoUsuario('')
       setNuevaPassword('')
@@ -89,6 +98,7 @@ function TrabajadoresContent() {
 
   const toggleActivo = async (row: TrabajadorRow) => {
     setError(null)
+    setErrorHint(null)
     setSuccess(null)
     try {
       const auth = getFirebaseAuth()
@@ -100,7 +110,10 @@ function TrabajadoresContent() {
         body: JSON.stringify({ activo: !row.activo }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error')
+      if (!res.ok) {
+        setErrorHint(typeof data.hint === 'string' ? data.hint : null)
+        throw new Error(data.error || 'Error')
+      }
       setSuccess(row.activo ? 'Acceso desactivado.' : 'Acceso reactivado.')
       await cargar()
     } catch (e: unknown) {
@@ -110,6 +123,7 @@ function TrabajadoresContent() {
 
   const setupDefault = async () => {
     setError(null)
+    setErrorHint(null)
     setSuccess(null)
     try {
       const auth = getFirebaseAuth()
@@ -120,7 +134,10 @@ function TrabajadoresContent() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error')
+      if (!res.ok) {
+        setErrorHint(typeof data.hint === 'string' ? data.hint : null)
+        throw new Error(data.error || 'Error')
+      }
       setSuccess(data.created ? 'Creado usuario «usuario» con contraseña «12345».' : (data.message as string))
       await cargar()
     } catch (e: unknown) {
@@ -151,7 +168,12 @@ function TrabajadoresContent() {
             <span className="font-mono text-xs">/worker-login</span>. No pueden editar datos existentes; solo ver y agregar registros.
           </p>
 
-          {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-800 text-sm">{error}</div>}
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-800 text-sm space-y-2">
+              <p>{error}</p>
+              {errorHint && <p className="text-xs text-gray-700 leading-relaxed">{errorHint}</p>}
+            </div>
+          )}
           {success && <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-800 text-sm">{success}</div>}
 
           <button

@@ -10,6 +10,7 @@ export async function fetchWithAuth(input: RequestInfo | URL, init?: RequestInit
   const headers = new Headers(init?.headers ?? undefined)
   try {
     const auth = getFirebaseAuth()
+    await auth.authStateReady()
     const firebaseUser = auth.currentUser
     if (firebaseUser) {
       const token = await firebaseUser.getIdToken()
