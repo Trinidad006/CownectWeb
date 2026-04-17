@@ -51,3 +51,5 @@ export function esExamenOvaricoValido(obj: unknown): obj is ExamenOvarico {
     (o.metodo === 'palpacion' || o.metodo === 'ultrasonido')
   )
 }
+
+

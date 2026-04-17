@@ -91,3 +91,5 @@ export function calcularEstadoReproductivo(eventos: EventoAnimal[]): EstadoRepro
       : null,
   }
 }
+
+

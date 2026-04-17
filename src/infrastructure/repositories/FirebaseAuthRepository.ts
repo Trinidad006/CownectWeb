@@ -96,10 +96,13 @@ export class FirebaseAuthRepository implements AuthRepository {
         await sendEmailVerification(firebaseUser)
       }
 
+      const rolRegistro = (enhancedProfile as { rol?: string }).rol ?? 'PROPIETARIO'
       const user: User = {
         id: firebaseUser.uid,
         email: firebaseUser.email || data.email,
-        rol: 'PROPIETARIO',
+        rol: rolRegistro as User['rol'],
+        id_rancho_jefe: (data as { id_rancho_jefe?: string }).id_rancho_jefe,
+        pin_kiosko: (data as { pin_kiosko?: string }).pin_kiosko,
         nombre: data.nombre,
         apellido: data.apellido,
         telefono: data.telefono,
@@ -118,10 +121,22 @@ export class FirebaseAuthRepository implements AuthRepository {
 
       return { user, error: null }
     } catch (error: any) {
+      const code = error?.code as string | undefined
+      const messages: Record<string, string> = {
+        'auth/email-already-in-use': 'Ya existe una cuenta con este correo. Usa otro email o inicia sesión con esa cuenta.',
+        'auth/email-already-exists': 'Ya existe una cuenta con este correo.',
+        'auth/invalid-email': 'El correo electrónico no es válido.',
+        'auth/weak-password': 'La contraseña es demasiado débil.',
+        'auth/operation-not-allowed': 'El registro por email/contraseña no está habilitado en Firebase.',
+        'auth/network-request-failed': 'Error de red. Comprueba tu conexión.',
+      }
       const message =
-        error?.code === 'auth/email-already-in-use'
-          ? 'El correo ya está registrado'
-          : error?.message || 'Error al registrar'
+        (code && messages[code]) ||
+        (typeof error?.message === 'string' && error.message.includes('EMAIL_EXISTS')
+          ? 'Ya existe una cuenta con este correo.'
+          : null) ||
+        error?.message ||
+        'Error al registrar'
       return { user: null, error: message }
     }
   }

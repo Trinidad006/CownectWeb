@@ -16,3 +16,5 @@ export type EventoReproductivo = EventoAnimal & {
 export function esEventoReproductivo(e: EventoAnimal): e is EventoReproductivo {
   return (EVENTOS_REPRODUCTIVOS as readonly TipoEvento[]).includes(e.tipo_evento)
 }
+
+

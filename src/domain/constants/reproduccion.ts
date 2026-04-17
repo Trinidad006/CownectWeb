@@ -10,3 +10,5 @@ export const DIAS_ALERTA_RECELO = 21
 /** Rango recomendado para diagnóstico de preñez post-servicio (días). */
 export const DIAS_MIN_DIAGNOSTICO_PREÑEZ = 30
 export const DIAS_MAX_DIAGNOSTICO_PREÑEZ = 45
+
+

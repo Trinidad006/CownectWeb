@@ -31,9 +31,10 @@ export function useAuth(redirectToLogin = true) {
       try {
         const token = await firebaseUser.getIdTokenResult()
         const claims = token.claims as Record<string, unknown>
-        const esTrabajador = claims.tipo === 'trabajador' && typeof claims.owner_uid === 'string'
+        const esTrabajadorCustom =
+          claims.tipo === 'trabajador' && typeof claims.owner_uid === 'string'
 
-        if (esTrabajador) {
+        if (esTrabajadorCustom) {
           const ownerUid = claims.owner_uid as string
           const db = getFirebaseDb()
           const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, ownerUid))
@@ -43,10 +44,16 @@ export function useAuth(redirectToLogin = true) {
             email: (profile?.email as string) || '',
             es_sesion_trabajador: true,
             trabajador_id: typeof claims.worker_id === 'string' ? claims.worker_id : undefined,
+            rol: profile?.rol || 'PROPIETARIO',
+            id_rancho_jefe: profile?.id_rancho_jefe,
+            pin_kiosko: profile?.pin_kiosko,
+            permisos: profile?.permisos,
             nombre: profile?.nombre,
             apellido: profile?.apellido,
             telefono: profile?.telefono,
             rancho: profile?.rancho,
+            rancho_ids: profile?.rancho_ids,
+            rancho_actual_id: profile?.rancho_actual_id,
             rancho_hectareas: profile?.rancho_hectareas,
             rancho_pais: profile?.rancho_pais,
             rancho_ciudad: profile?.rancho_ciudad,
@@ -69,7 +76,12 @@ export function useAuth(redirectToLogin = true) {
           return
         }
 
-        if (!firebaseUser.emailVerified) {
+        const db = getFirebaseDb()
+        const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid))
+        const profile = profileSnap.data()
+        const esEmpleadoKiosko = profile?.rol === 'TRABAJADOR'
+
+        if (!firebaseUser.emailVerified && !esEmpleadoKiosko) {
           await signOut(auth)
           setIsAuthenticated(false)
           setUser(null)
@@ -80,18 +92,20 @@ export function useAuth(redirectToLogin = true) {
           return
         }
 
-        const db = getFirebaseDb()
-        const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid))
-        const profile = profileSnap.data()
-
         const userData: User = {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
           es_sesion_trabajador: false,
+          rol: profile?.rol || 'PROPIETARIO',
+          id_rancho_jefe: profile?.id_rancho_jefe,
+          pin_kiosko: profile?.pin_kiosko,
+          permisos: profile?.permisos,
           nombre: profile?.nombre,
           apellido: profile?.apellido,
           telefono: profile?.telefono,
           rancho: profile?.rancho,
+          rancho_ids: profile?.rancho_ids,
+          rancho_actual_id: profile?.rancho_actual_id,
           rancho_hectareas: profile?.rancho_hectareas,
           rancho_pais: profile?.rancho_pais,
           rancho_ciudad: profile?.rancho_ciudad,
@@ -103,7 +117,7 @@ export function useAuth(redirectToLogin = true) {
           suscripcion_fecha: profile?.suscripcion_fecha,
           almacenamiento_usado_bytes: profile?.almacenamiento_usado_bytes,
           almacenamiento_limite_bytes: profile?.almacenamiento_limite_bytes,
-          is_admin: profile?.is_admin || (firebaseUser.email === 'mufasaelrey13@gmail.com'),
+          is_admin: profile?.is_admin || firebaseUser.email === 'mufasaelrey13@gmail.com',
           suspendido: profile?.suspendido || false,
           fecha_suspension: profile?.fecha_suspension,
           motivo_suspension: profile?.motivo_suspension,
@@ -135,19 +149,15 @@ export function useAuth(redirectToLogin = true) {
       if (redirectToLogin) router.replace('/login')
       return
     }
+
     const token = await firebaseUser.getIdTokenResult()
     const claims = token.claims as Record<string, unknown>
-    const esTrabajador = claims.tipo === 'trabajador' && typeof claims.owner_uid === 'string'
-    if (!esTrabajador && !firebaseUser.emailVerified) {
-      await signOut(auth)
-      setUser(null)
-      setIsAuthenticated(false)
-      if (redirectToLogin) router.replace('/login')
-      return
-    }
-    const db = getFirebaseDb()
-    if (esTrabajador) {
+    const esTrabajadorCustom =
+      claims.tipo === 'trabajador' && typeof claims.owner_uid === 'string'
+
+    if (esTrabajadorCustom) {
       const ownerUid = claims.owner_uid as string
+      const db = getFirebaseDb()
       const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, ownerUid))
       const profile = profileSnap.data()
       setUser({
@@ -155,10 +165,16 @@ export function useAuth(redirectToLogin = true) {
         email: (profile?.email as string) || '',
         es_sesion_trabajador: true,
         trabajador_id: typeof claims.worker_id === 'string' ? claims.worker_id : undefined,
+        rol: profile?.rol || 'PROPIETARIO',
+        id_rancho_jefe: profile?.id_rancho_jefe,
+        pin_kiosko: profile?.pin_kiosko,
+        permisos: profile?.permisos,
         nombre: profile?.nombre,
         apellido: profile?.apellido,
         telefono: profile?.telefono,
         rancho: profile?.rancho,
+        rancho_ids: profile?.rancho_ids,
+        rancho_actual_id: profile?.rancho_actual_id,
         rancho_hectareas: profile?.rancho_hectareas,
         rancho_pais: profile?.rancho_pais,
         rancho_ciudad: profile?.rancho_ciudad,
@@ -178,16 +194,34 @@ export function useAuth(redirectToLogin = true) {
       setIsAuthenticated(true)
       return
     }
+
+    const db = getFirebaseDb()
     const profileSnap = await getDoc(doc(db, USUARIOS_COLLECTION, firebaseUser.uid))
     const profile = profileSnap.data()
+    const esEmpleadoKiosko = profile?.rol === 'TRABAJADOR'
+
+    if (!firebaseUser.emailVerified && !esEmpleadoKiosko) {
+      await signOut(auth)
+      setUser(null)
+      setIsAuthenticated(false)
+      if (redirectToLogin) router.replace('/login')
+      return
+    }
+
     const userData: User = {
       id: firebaseUser.uid,
       email: firebaseUser.email || '',
       es_sesion_trabajador: false,
+      rol: profile?.rol || 'PROPIETARIO',
+      id_rancho_jefe: profile?.id_rancho_jefe,
+      pin_kiosko: profile?.pin_kiosko,
+      permisos: profile?.permisos,
       nombre: profile?.nombre,
       apellido: profile?.apellido,
       telefono: profile?.telefono,
       rancho: profile?.rancho,
+      rancho_ids: profile?.rancho_ids,
+      rancho_actual_id: profile?.rancho_actual_id,
       rancho_hectareas: profile?.rancho_hectareas,
       rancho_pais: profile?.rancho_pais,
       rancho_ciudad: profile?.rancho_ciudad,
@@ -199,7 +233,7 @@ export function useAuth(redirectToLogin = true) {
       suscripcion_fecha: profile?.suscripcion_fecha,
       almacenamiento_usado_bytes: profile?.almacenamiento_usado_bytes,
       almacenamiento_limite_bytes: profile?.almacenamiento_limite_bytes,
-      is_admin: profile?.is_admin || (firebaseUser.email === 'mufasaelrey13@gmail.com'),
+      is_admin: profile?.is_admin || firebaseUser.email === 'mufasaelrey13@gmail.com',
       suspendido: profile?.suspendido || false,
       fecha_suspension: profile?.fecha_suspension,
       motivo_suspension: profile?.motivo_suspension,

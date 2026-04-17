@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import DashboardHeader from '../components/layouts/DashboardHeader'
 import BackButton from '../components/ui/BackButton'
+import { fetchWithAuth } from '../utils/fetchWithAuth'
 
 interface CertificadoResult {
   elegible: boolean
@@ -43,7 +44,7 @@ function CertificadoContent() {
     setCertificado(null)
 
     try {
-      const response = await fetch('/api/certificado', {
+      const response = await fetchWithAuth('/api/certificado', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

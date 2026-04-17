@@ -195,7 +195,7 @@ export default function RegisterForm() {
             />
           </div>
           <Input
-            label="Dirección (opcional)"
+            label="Dirección — opcional"
             name="rancho_direccion"
             type="text"
             value={formData.rancho_direccion}
@@ -203,7 +203,7 @@ export default function RegisterForm() {
             placeholder="Vereda, km, etc."
           />
           <div>
-            <label className="block text-base font-bold text-black mb-2">Descripción del rancho (opcional)</label>
+            <label className="block text-base font-bold text-black mb-2">Descripción del rancho — opcional</label>
             <textarea
               name="rancho_descripcion"
               value={formData.rancho_descripcion}
