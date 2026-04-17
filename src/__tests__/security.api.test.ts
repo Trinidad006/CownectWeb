@@ -28,6 +28,79 @@ describe('TC-PAY-06: Seguridad en Rutas Protegidas', () => {
 
     expect(response.status).toBe(200)
   })
+
+  describe('Validación Premium en APIs Nuevas', () => {
+    test('Debe devolver 403 para múltiples ranchos sin plan premium', async () => {
+      const response = await request(API_URL)
+        .post('/api/rancho')
+        .send({
+          usuario_id: 'user_freemium_id',
+          nombre: 'Rancho Test',
+          pais: 'México',
+          ciudad: 'CDMX'
+        })
+
+      expect(response.status).toBe(403)
+      expect(response.body.error).toMatch(/premium|requiere/i)
+    })
+
+    test('Debe devolver 403 para registro de producción sin plan premium', async () => {
+      const response = await request(API_URL)
+        .post('/api/produccion')
+        .send({
+          usuario_id: 'user_freemium_id',
+          rancho_id: 'rancho_id',
+          animal_id: 'animal_id',
+          tipo: 'LECHE',
+          cantidad: 10,
+          unidad: 'LITROS'
+        })
+
+      expect(response.status).toBe(403)
+      expect(response.body.error).toMatch(/premium|requiere/i)
+    })
+
+    test('Debe devolver 403 para historial clínico sin plan premium', async () => {
+      const response = await request(API_URL)
+        .post('/api/salud')
+        .send({
+          usuario_id: 'user_freemium_id',
+          rancho_id: 'rancho_id',
+          animal_id: 'animal_id',
+          enfermedad: 'Mastitis',
+          diagnostico: 'Inflamación de la ubre'
+        })
+
+      expect(response.status).toBe(403)
+      expect(response.body.error).toMatch(/premium|requiere/i)
+    })
+
+    test('Debe devolver 403 para sistema de tareas sin plan premium', async () => {
+      const response = await request(API_URL)
+        .post('/api/tareas')
+        .send({
+          usuario_id: 'user_freemium_id',
+          rancho_id: 'rancho_id',
+          titulo: 'Vacunar ganado',
+          descripcion: 'Vacuna contra aftosa'
+        })
+
+      expect(response.status).toBe(403)
+      expect(response.body.error).toMatch(/premium|requiere/i)
+    })
+
+    test('Debe devolver 403 para certificado Cownect sin plan premium', async () => {
+      const response = await request(API_URL)
+        .post('/api/certificado')
+        .send({
+          usuario_id: 'user_freemium_id',
+          rancho_id: 'rancho_id'
+        })
+
+      expect(response.status).toBe(403)
+      expect(response.body.error).toMatch(/premium|requiere/i)
+    })
+  })
 })
 
 

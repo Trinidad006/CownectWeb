@@ -6,6 +6,7 @@ import { Animal } from '@/domain/entities/Animal'
 import { useAuth } from '../hooks/useAuth'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import DashboardHeader from '../components/layouts/DashboardHeader'
+import Sidebar from '../components/layouts/Sidebar'
 import { FirebaseAnimalRepository } from '@/infrastructure/repositories/FirebaseAnimalRepository'
 import { firestoreService } from '@/infrastructure/services/firestoreService'
 import { getDriveImageUrl } from '@/utils/driveImage'
@@ -17,7 +18,7 @@ const animalRepository = new FirebaseAnimalRepository()
 
 function GestionContent() {
   const router = useRouter()
-  const { user, checkAuth } = useAuth(false)
+  const { user } = useAuth(false)
   const puedeEditar = !user?.es_sesion_trabajador
   const [animales, setAnimales] = useState<Animal[]>([])
   const [pesos, setPesos] = useState<any[]>([])
@@ -83,7 +84,6 @@ function GestionContent() {
     if (!user?.id) return
     try {
       const data = await animalRepository.getAll(user.id)
-      // Para el límite del plan, contamos todos los animales del usuario (activos + inactivos)
       setTotalAnimalesRegistrados(data.length)
       const filtrados = data.filter((a) => a.activo !== false)
       setAnimales(filtrados)
@@ -125,17 +125,6 @@ function GestionContent() {
     }
 
     try {
-      if (!editingAnimal?.id) {
-        const isPremium = user?.plan === 'premium' || user?.suscripcion_activa
-        const count = totalAnimalesRegistrados
-        if (count >= 250 && !isPremium) {
-          setIsLimitError(true)
-          setErrorMessage('Has alcanzado el límite de 250 animales. Únete al plan Premium.')
-          setShowErrorModal(true)
-          return
-        }
-      }
-
       const numeroNorm = formData.numero_identificacion?.trim().toUpperCase() || ''
       const estadoParaValidar = formData.estatus === 'Activo' ? formData.estado : formData.estatus
       const animalTemporal: Animal = {
@@ -155,127 +144,91 @@ function GestionContent() {
         return
       }
 
-      // Validaciones de vacuna opcional al registrar
-      if (!editingAnimal?.id && vacunaAlRegistrar.agregar) {
-        const hoy = new Date()
-        hoy.setHours(0, 0, 0, 0)
-
-        if (vacunaAlRegistrar.fecha_aplicacion) {
-          const fechaVacuna = new Date(vacunaAlRegistrar.fecha_aplicacion)
-          fechaVacuna.setHours(0, 0, 0, 0)
-
-          // No puede ser antes de la fecha de nacimiento
-          if (formData.fecha_nacimiento) {
-            const nacimiento = new Date(formData.fecha_nacimiento)
-            nacimiento.setHours(0, 0, 0, 0)
-            if (fechaVacuna < nacimiento) {
-              setErrorMessage('La fecha de la vacuna no puede ser anterior a la fecha de nacimiento del animal.')
-              setShowErrorModal(true)
-              return
-            }
-          }
-
-          // No puede ser en el futuro
-          if (fechaVacuna > hoy) {
-            setErrorMessage('La fecha en que se aplicó la vacuna no puede estar en el futuro.')
-            setShowErrorModal(true)
-            return
-          }
-        }
-
-        if (vacunaAlRegistrar.proxima_dosis) {
-          const proxima = new Date(vacunaAlRegistrar.proxima_dosis)
-          proxima.setHours(0, 0, 0, 0)
-
-          // Próxima dosis no puede ser en el pasado
-          if (proxima < hoy) {
-            setErrorMessage('La próxima dosis no puede estar en el pasado.')
-            setShowErrorModal(true)
-            return
-          }
-
-          if (vacunaAlRegistrar.fecha_aplicacion) {
-            const fechaVacuna = new Date(vacunaAlRegistrar.fecha_aplicacion)
-            fechaVacuna.setHours(0, 0, 0, 0)
-            // Próxima dosis debe ser igual o posterior a la fecha de aplicación
-            if (proxima < fechaVacuna) {
-              setErrorMessage('La próxima dosis debe ser igual o posterior a la fecha en que se aplicó la vacuna.')
-              setShowErrorModal(true)
-              return
-            }
-          }
-        }
+      const animalData: Partial<Animal> = {
+        ...formData,
+        observaciones: formData.observaciones.filter((o) => o.trim() !== '').join(' · '),
+        numero_identificacion: numeroNorm,
+        usuario_id: user.id,
+        rancho_id: user.rancho_actual_id || 'default',
+        activo: formData.estatus === 'Activo',
       }
 
-      if (numeroNorm) {
-        const existente = await animalRepository.findByNumeroIdentificacion(numeroNorm, user.id, editingAnimal?.id)
-        if (existente) {
-          setErrorMessage('Ya existe un animal con este arete/número de identificación')
-          setShowErrorModal(true)
-          return
-        }
-      }
-
-      const docs = verificarDocumentosCompletos({
-        documento_guia_transito: formData.documento_guia_transito || undefined,
-        documento_factura_venta: formData.documento_factura_venta || undefined,
-        documento_certificado_movilizacion: formData.documento_certificado_movilizacion || undefined,
-        documento_certificado_zoosanitario: formData.documento_certificado_zoosanitario || undefined,
-        documento_patente_fierro: formData.documento_patente_fierro || undefined,
-        foto: formData.foto || undefined,
-      } as Animal)
-      const estadoGuardar = formData.estatus === 'Activo' ? formData.estado : formData.estatus
-      const observacionesTexto = formData.observaciones.filter((o) => o.trim()).join(' · ') || undefined
-      const animalData: any = { ...formData, estado: estadoGuardar, numero_identificacion: numeroNorm || undefined, documentos_completos: docs }
-      animalData.observaciones = observacionesTexto
-      delete animalData.estatus
-      if (formData.origen === 'cria' && formData.madre_id) {
-        animalData.madre_id = formData.madre_id
-        const madre = animales.find((a) => a.id === formData.madre_id)
-        const validacionMadre = AnimalValidator.validarMadre(madre ?? null, true)
-        if (!validacionMadre.valido) {
-          setErrorMessage(validacionMadre.error || 'Error al validar la madre')
-          setShowErrorModal(true)
-          return
-        }
-      } else {
-        // No debe enviarse madre_id a Firestore si no es cría
-        delete animalData.madre_id
-      }
-      const validacionSexo = AnimalValidator.validarSexoConEstado(formData.sexo, formData.estado)
-      if (!validacionSexo.valido) {
-        setErrorMessage(validacionSexo.error || 'Estado no coincide con el sexo del animal')
-        setShowErrorModal(true)
-        return
-      }
-      delete animalData.origen
-
-      let newAnimalId: string | undefined
+      let animalId = editingAnimal?.id
       if (editingAnimal?.id) {
         await animalRepository.update(editingAnimal.id, animalData)
+        setSuccessMessage('Animal actualizado con éxito')
       } else {
-        const created = await animalRepository.create({ ...animalData, usuario_id: user.id })
-        newAnimalId = created.id
-        if (newAnimalId && vacunaAlRegistrar.agregar && vacunaAlRegistrar.tipo_vacuna.trim()) {
+        const nuevo = await animalRepository.create(animalData as Animal)
+        animalId = nuevo?.id
+        setSuccessMessage('Animal registrado con éxito')
+
+        if (nuevo?.id && vacunaAlRegistrar.agregar) {
           await firestoreService.addVacunacion({
-            animal_id: newAnimalId,
+            animal_id: nuevo.id,
             usuario_id: user.id,
-            tipo_vacuna: vacunaAlRegistrar.tipo_vacuna.trim(),
+            tipo_vacuna: vacunaAlRegistrar.tipo_vacuna,
             fecha_aplicacion: vacunaAlRegistrar.fecha_aplicacion,
             proxima_dosis: vacunaAlRegistrar.proxima_dosis || undefined,
+            observaciones: 'Registrada automáticamente al dar de alta al animal',
           })
         }
       }
+
       setShowFormAnimal(false)
-      setEditingAnimal(null)
-      setFormData({ nombre: '', numero_identificacion: '', especie: '', raza: '', fecha_nacimiento: '', sexo: 'M', estado: '', estatus: 'Activo', origen: 'comprado', madre_id: '', observaciones: [''], documento_guia_transito: '', documento_factura_venta: '', documento_certificado_movilizacion: '', documento_certificado_zoosanitario: '', documento_patente_fierro: '', foto: '' })
-      setVacunaAlRegistrar({ agregar: false, tipo_vacuna: '', fecha_aplicacion: new Date().toISOString().split('T')[0], proxima_dosis: '' })
-      loadData()
-      if (selectedAnimal?.id === editingAnimal?.id) setSelectedAnimal(null)
-      setSuccessMessage(editingAnimal ? 'Animal actualizado' : 'Animal registrado')
       setShowSuccessModal(true)
+      loadData()
+      if (animalId) {
+        const updated = await animalRepository.getById(animalId, user.id)
+        if (updated) setSelectedAnimal(updated)
+      }
     } catch (error: any) {
-      setErrorMessage('Error: ' + error.message)
+      setErrorMessage(error.message || 'Error al guardar el animal')
+      setShowErrorModal(true)
+    }
+  }
+
+  const handleEdit = (animal: Animal) => {
+    if (!puedeEditar) return
+    setEditingAnimal(animal)
+    setFormData({
+      nombre: animal.nombre || '',
+      numero_identificacion: animal.numero_identificacion || '',
+      especie: animal.especie || '',
+      raza: animal.raza || '',
+      fecha_nacimiento: animal.fecha_nacimiento || '',
+      sexo: animal.sexo as 'M' | 'H',
+      estado: animal.estado || '',
+      estatus: animal.activo === false ? (animal.estado as any) || 'Muerto' : 'Activo',
+      origen: animal.origen as any || 'comprado',
+      madre_id: animal.madre_id || '',
+      observaciones: animal.observaciones ? animal.observaciones.split(' · ') : [''],
+      documento_guia_transito: animal.documento_guia_transito || '',
+      documento_factura_venta: animal.documento_factura_venta || '',
+      documento_certificado_movilizacion: animal.documento_certificado_movilizacion || '',
+      documento_certificado_zoosanitario: animal.documento_certificado_zoosanitario || '',
+      documento_patente_fierro: animal.documento_patente_fierro || '',
+      foto: animal.foto || '',
+    })
+    setShowFormAnimal(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!animalToDelete?.id) return
+    try {
+      await animalRepository.update(animalToDelete.id, {
+        activo: false,
+        razon_inactivo: razonEliminacion,
+        fecha_inactivo: new Date().toISOString(),
+      })
+      setShowDeleteModal(false)
+      setAnimalToDelete(null)
+      setRazonEliminacion('')
+      setSuccessMessage('Animal marcado como inactivo')
+      setShowSuccessModal(true)
+      loadData()
+      setSelectedAnimal(null)
+    } catch (error) {
+      setErrorMessage('No se pudo desactivar el animal')
       setShowErrorModal(true)
     }
   }
@@ -287,16 +240,14 @@ function GestionContent() {
       await firestoreService.addPeso({
         animal_id: selectedAnimal.id,
         usuario_id: user.id,
-        peso: parseFloat(pesoForm.peso),
+        peso: Number(pesoForm.peso),
         fecha_registro: pesoForm.fecha_registro,
-        observaciones: pesoForm.observaciones || undefined,
+        observaciones: pesoForm.observaciones,
       })
       setPesoForm({ peso: '', fecha_registro: new Date().toISOString().split('T')[0], observaciones: '' })
       loadPesosYVacunaciones(selectedAnimal.id)
-      setSuccessMessage('Peso registrado')
-      setShowSuccessModal(true)
-    } catch (error: any) {
-      setErrorMessage('Error: ' + error.message)
+    } catch (e) {
+      setErrorMessage('Error al guardar peso')
       setShowErrorModal(true)
     }
   }
@@ -305,279 +256,177 @@ function GestionContent() {
     e.preventDefault()
     if (!selectedAnimal?.id || !user?.id) return
     try {
-      const hoy = new Date()
-      hoy.setHours(0, 0, 0, 0)
-
-      if (vacunaForm.fecha_aplicacion) {
-        const fechaVacuna = new Date(vacunaForm.fecha_aplicacion)
-        fechaVacuna.setHours(0, 0, 0, 0)
-
-        // No puede ser anterior a la fecha de nacimiento
-        if (selectedAnimal.fecha_nacimiento) {
-          const nacimiento = new Date(selectedAnimal.fecha_nacimiento)
-          nacimiento.setHours(0, 0, 0, 0)
-          if (fechaVacuna < nacimiento) {
-            setErrorMessage('La fecha de la vacuna no puede ser anterior a la fecha de nacimiento del animal.')
-            setShowErrorModal(true)
-            return
-          }
-        }
-
-        // No puede ser en el futuro
-        if (fechaVacuna > hoy) {
-          setErrorMessage('La fecha en que se aplicó la vacuna no puede estar en el futuro.')
-          setShowErrorModal(true)
-          return
-        }
-      }
-
-      if (vacunaForm.proxima_dosis) {
-        const proxima = new Date(vacunaForm.proxima_dosis)
-        proxima.setHours(0, 0, 0, 0)
-
-        // Próxima dosis no puede estar en el pasado
-        if (proxima < hoy) {
-          setErrorMessage('La próxima dosis no puede estar en el pasado.')
-          setShowErrorModal(true)
-          return
-        }
-
-        if (vacunaForm.fecha_aplicacion) {
-          const fechaVacuna = new Date(vacunaForm.fecha_aplicacion)
-          fechaVacuna.setHours(0, 0, 0, 0)
-          if (proxima < fechaVacuna) {
-            setErrorMessage('La próxima dosis debe ser igual o posterior a la fecha en que se aplicó la vacuna.')
-            setShowErrorModal(true)
-            return
-          }
-        }
-      }
-
       await firestoreService.addVacunacion({
         animal_id: selectedAnimal.id,
         usuario_id: user.id,
         tipo_vacuna: vacunaForm.tipo_vacuna,
         fecha_aplicacion: vacunaForm.fecha_aplicacion,
         proxima_dosis: vacunaForm.proxima_dosis || undefined,
-        observaciones: vacunaForm.observaciones || undefined,
+        observaciones: vacunaForm.observaciones,
       })
       setVacunaForm({ tipo_vacuna: '', fecha_aplicacion: new Date().toISOString().split('T')[0], proxima_dosis: '', observaciones: '' })
       loadPesosYVacunaciones(selectedAnimal.id)
-      setSuccessMessage('Vacunación registrada')
-      setShowSuccessModal(true)
-    } catch (error: any) {
-      setErrorMessage('Error: ' + error.message)
+    } catch (e) {
+      setErrorMessage('Error al guardar vacuna')
       setShowErrorModal(true)
     }
-  }
-
-  const handleCambiarEstado = async (animal: Animal, nuevoEstado: string) => {
-    if (!animal.id || !user?.id) return
-    if (nuevoEstado === 'Muerto' || nuevoEstado === 'Robado') {
-      setAnimalEstadoCambiar(animal)
-      setNuevoEstado(nuevoEstado)
-      setRazonEstado('')
-      setShowEstadoModal(true)
-      return
-    }
-    if (nuevoEstado === 'Activo') {
-      try {
-        await animalRepository.update(animal.id, { estado: nuevoEstado, activo: true, razon_inactivo: undefined, fecha_inactivo: undefined, updated_at: new Date().toISOString() })
-        loadData()
-        setSelectedAnimal(null)
-        setSuccessMessage('Animal reactivado')
-        setShowSuccessModal(true)
-      } catch (e: any) {
-        setErrorMessage(e.message)
-        setShowErrorModal(true)
-      }
-      return
-    }
-    try {
-      await animalRepository.update(animal.id, { estado: nuevoEstado, updated_at: new Date().toISOString() })
-      loadData()
-      if (selectedAnimal?.id === animal.id) setSelectedAnimal(null)
-      setSuccessMessage(`Estado: ${nuevoEstado}`)
-      setShowSuccessModal(true)
-    } catch (e: any) {
-      setErrorMessage(e.message)
-      setShowErrorModal(true)
-    }
-  }
-
-  const confirmarCambioEstado = async () => {
-    if (!animalEstadoCambiar?.id || !user?.id) return
-    try {
-      await animalRepository.update(animalEstadoCambiar.id, { estado: nuevoEstado, activo: false, razon_inactivo: razonEstado.trim() || undefined, fecha_inactivo: new Date().toISOString(), updated_at: new Date().toISOString() })
-      setShowEstadoModal(false)
-      setAnimalEstadoCambiar(null)
-      setNuevoEstado('')
-      setRazonEstado('')
-      loadData()
-      setSelectedAnimal(null)
-      setSuccessMessage(`Animal marcado como ${nuevoEstado}`)
-      setShowSuccessModal(true)
-    } catch (e: any) {
-      setErrorMessage(e.message)
-      setShowErrorModal(true)
-    }
-  }
-
-  const confirmDelete = async () => {
-    if (!animalToDelete?.id || !user?.id) return
-    try {
-      await animalRepository.update(animalToDelete.id, { activo: false, razon_inactivo: razonEliminacion.trim() || undefined, fecha_inactivo: new Date().toISOString(), updated_at: new Date().toISOString() })
-      setShowDeleteModal(false)
-      setAnimalToDelete(null)
-      setRazonEliminacion('')
-      loadData()
-      setSelectedAnimal(null)
-      setSuccessMessage('Animal marcado como inactivo')
-      setShowSuccessModal(true)
-    } catch (e: any) {
-      setErrorMessage(e.message)
-      setShowErrorModal(true)
-    }
-  }
-
-  const handleEdit = (animal: Animal) => {
-    if (!puedeEditar) return
-    setEditingAnimal(animal)
-    const esEstatus = animal.estado === 'Activo' || animal.estado === 'Muerto' || animal.estado === 'Robado'
-    const obsArray = animal.observaciones ? animal.observaciones.split(' · ').filter(Boolean) : ['']
-    setFormData({
-      nombre: animal.nombre || '',
-      numero_identificacion: AnimalValidator.formatNumeroIdentificacionSINIIGA(animal.numero_identificacion || ''),
-      especie: animal.especie || '',
-      raza: animal.raza || '',
-      fecha_nacimiento: animal.fecha_nacimiento || '',
-      sexo: animal.sexo || 'M',
-      estado: esEstatus ? '' : (animal.estado || ''),
-      estatus: esEstatus ? (animal.estado as 'Activo' | 'Muerto' | 'Robado') : 'Activo',
-      origen: animal.madre_id ? 'cria' : 'comprado',
-      madre_id: animal.madre_id || '',
-      observaciones: obsArray.length > 0 ? obsArray : [''],
-      documento_guia_transito: animal.documento_guia_transito || '',
-      documento_factura_venta: animal.documento_factura_venta || '',
-      documento_certificado_movilizacion: animal.documento_certificado_movilizacion || '',
-      documento_certificado_zoosanitario: animal.documento_certificado_zoosanitario || '',
-      documento_patente_fierro: animal.documento_patente_fierro || '',
-      foto: animal.foto || '',
-    })
-    setShowFormAnimal(true)
   }
 
   const ultimoPeso = pesos.length > 0 ? pesos[0] : null
   const chartData = useMemo(() => pesos.map((p) => ({ peso: p.peso, fecha_registro: p.fecha_registro })), [pesos])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat relative flex items-center justify-center" style={{ backgroundImage: 'url(/images/fondo_verde.jpg)' }}>
-        <div className="absolute inset-0 bg-black bg-opacity-50" />
-        <div className="text-white text-xl relative z-10">Cargando...</div>
-      </div>
-    )
-  }
+  if (loading) return <div className="p-8 text-center text-white">Cargando...</div>
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-fixed bg-no-repeat relative animate-pageEnter" style={{ backgroundImage: 'url(/images/fondo_verde.jpg)' }}>
-      <div className="absolute inset-0 bg-black bg-opacity-50" />
-      <DashboardHeader />
+    <div className="min-h-screen flex bg-cover bg-center bg-fixed bg-no-repeat relative animate-pageEnter" style={{ backgroundImage: 'url(/images/fondo_verde.jpg)' }}>
+      <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+      
+      <Sidebar className="hidden md:flex w-64 shrink-0 relative z-20" />
+      
+      <div className="flex-1 min-w-0 flex flex-col relative z-10 overflow-hidden">
+        <DashboardHeader />
+        
+        <main className="flex-1 overflow-y-auto relative p-4 lg:p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-6">
+              <BackButton href="/dashboard" inline />
+            </div>
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10 animate-contentFadeIn">
-        <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/30">
-          <div className="flex items-center gap-3 mb-4">
-            <BackButton href="/dashboard" inline />
-          </div>
-
-          <div className="flex flex-col items-center mb-6">
-            <h1 className="text-4xl font-serif font-bold text-black mt-4 mb-2">Cownect</h1>
-            <h2 className="text-2xl font-bold text-black mb-4">Gestión de Animales</h2>
-            {!puedeEditar && (
-              <p className="text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm mb-4 max-w-xl mx-auto text-center">
-                Sesión de trabajador: puedes ver datos y registrar pesos, vacunas y animales nuevos. No puedes editar ni dar de baja animales existentes.
-              </p>
-            )}
-            <div className="flex gap-4 mt-2">
-              {puedeEditar && (
-                <button onClick={() => router.push('/dashboard/animales/inactivos')} className="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-700 transition-all">
-                  Ver Animales Inactivos
+            <div className="bg-white rounded-lg shadow-2xl p-6 border-2 border-cownect-green/20">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">Gestión de Inventario</h1>
+                  <p className="text-gray-600 mt-1">Control total de sus animales, pesos y salud</p>
+                  {!puedeEditar && (
+                    <p className="text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm mt-3 max-w-xl">
+                      Sesión de trabajador: puedes ver y dar de alta animales nuevos; no puedes editar datos ni marcar inactivos.
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setShowFormAnimal(true)
+                    setEditingAnimal(null)
+                    setFormData({ nombre: '', numero_identificacion: '', especie: '', raza: '', fecha_nacimiento: '', sexo: 'M', estado: '', estatus: 'Activo', origen: 'comprado', madre_id: '', observaciones: [''], documento_guia_transito: '', documento_factura_venta: '', documento_certificado_movilizacion: '', documento_certificado_zoosanitario: '', documento_patente_fierro: '', foto: '' })
+                    setVacunaAlRegistrar({ agregar: false, tipo_vacuna: '', fecha_aplicacion: new Date().toISOString().split('T')[0], proxima_dosis: '' })
+                  }}
+                  className="bg-cownect-green text-white px-6 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg"
+                >
+                  + Agregar Animal
                 </button>
-              )}
+              </div>
+
+              <div className="mb-6">
+                <input
+                  type="text"
+                  placeholder="Buscar por arete..."
+                  value={busquedaArete}
+                  onChange={(e) => setBusquedaArete(e.target.value)}
+                  className="w-full px-5 py-3 border-2 border-gray-100 rounded-xl focus:ring-2 focus:ring-cownect-green outline-none font-bold"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Lista de animales */}
+                <div className="lg:col-span-5 space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                  {animalesFiltrados.map((animal) => (
+                    <div
+                      key={animal.id}
+                      onClick={() => setSelectedAnimal(animal)}
+                      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                        selectedAnimal?.id === animal.id ? 'border-cownect-green bg-cownect-green/5' : 'border-gray-50 bg-white hover:border-cownect-green/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold ${animal.sexo === 'M' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}`}>
+                          {animal.sexo}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{animal.numero_identificacion || 'S/N'}</p>
+                          <p className="text-xs text-gray-400 uppercase font-bold">{animal.nombre || animal.raza}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Detalle del animal */}
+                <div className="lg:col-span-7">
+                  {selectedAnimal ? (
+                    <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 animate-fadeIn">
+                      <div className="flex justify-between items-start mb-6 pb-6 border-b border-gray-200">
+                        <div className="flex gap-4">
+                          {selectedAnimal.foto && (
+                            <img src={getDriveImageUrl(selectedAnimal.foto)} className="w-20 h-20 rounded-2xl object-cover" alt="Animal" />
+                          )}
+                          <div>
+                            <h2 className="text-2xl font-bold">{selectedAnimal.numero_identificacion}</h2>
+                            <p className="text-gray-500 font-bold uppercase text-xs">{selectedAnimal.nombre || 'Sin nombre'}</p>
+                          </div>
+                        </div>
+                        {puedeEditar && (
+                          <button onClick={() => handleEdit(selectedAnimal)} className="text-cownect-green font-bold text-sm hover:underline">Editar Datos</button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <div className="bg-white p-3 rounded-2xl shadow-sm text-center">
+                          <p className="text-[10px] font-bold text-gray-300 uppercase">Raza</p>
+                          <p className="font-bold text-gray-900">{selectedAnimal.raza || 'N/A'}</p>
+                        </div>
+                        <div className="bg-white p-3 rounded-2xl shadow-sm text-center">
+                          <p className="text-[10px] font-bold text-gray-300 uppercase">Estado</p>
+                          <p className="font-bold text-gray-900">{selectedAnimal.estado || 'N/A'}</p>
+                        </div>
+                        <div className="bg-white p-3 rounded-2xl shadow-sm text-center">
+                          <p className="text-[10px] font-bold text-gray-300 uppercase">Peso</p>
+                          <p className="font-bold text-gray-900">{ultimoPeso ? `${ultimoPeso.peso}kg` : '—'}</p>
+                        </div>
+                        <div className="bg-white p-3 rounded-2xl shadow-sm text-center">
+                          <p className="text-[10px] font-bold text-gray-300 uppercase">Origen</p>
+                          <p className="font-bold text-gray-900">{selectedAnimal.origen || 'N/A'}</p>
+                        </div>
+                      </div>
+
+                      <PesosChart pesos={chartData} />
+
+                      <div className="flex flex-wrap gap-3 mt-6">
+                        <button type="button" onClick={() => router.push(`/dashboard/eventos?id=${selectedAnimal.id}`)} className="flex-1 min-w-[140px] bg-cownect-dark-green text-white py-3 rounded-xl font-bold text-sm">Historial de eventos</button>
+                        <button onClick={() => router.push(`/dashboard/documentacion?id=${selectedAnimal.id}`)} className="flex-1 min-w-[140px] bg-cownect-green text-white py-3 rounded-xl font-bold text-sm">Documentación</button>
+                        {puedeEditar && (
+                          <button onClick={() => { setAnimalToDelete(selectedAnimal); setShowDeleteModal(true) }} className="flex-1 min-w-[140px] bg-red-600 text-white py-3 rounded-xl font-bold text-sm">Marcar Inactivo</button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                      <p className="text-gray-400 font-bold uppercase text-xs">Selecciona un animal para ver detalles</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
+        </main>
+      </div>
 
-          {/* Buscador por arete */}
-          <div className="mb-6">
-            <label className="block text-lg font-semibold text-gray-700 mb-2">Buscar por Arete / Número de Identificación</label>
-            <input
-              type="text"
-              placeholder="Escriba el arete para filtrar..."
-              value={busquedaArete}
-              onChange={(e) => setBusquedaArete(e.target.value)}
-              className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green bg-white text-black"
-            />
-          </div>
-
-          <div className="mb-6 flex gap-3 flex-wrap">
-            <button
-              onClick={() => {
-                setShowFormAnimal(true)
-                setEditingAnimal(null)
-                setFormData({ nombre: '', numero_identificacion: '', especie: '', raza: '', fecha_nacimiento: '', sexo: 'M', estado: '', estatus: 'Activo', origen: 'comprado', madre_id: '', observaciones: [''], documento_guia_transito: '', documento_factura_venta: '', documento_certificado_movilizacion: '', documento_certificado_zoosanitario: '', documento_patente_fierro: '', foto: '' })
-                setVacunaAlRegistrar({ agregar: false, tipo_vacuna: '', fecha_aplicacion: new Date().toISOString().split('T')[0], proxima_dosis: '' })
-              }}
-              className="bg-cownect-green text-white px-6 py-3 rounded-lg font-bold text-lg hover:bg-opacity-90 transition-all"
-            >
-              + Agregar Animal
-            </button>
-          </div>
-
-          {/* Modal tarjeta Nuevo/Editar Animal */}
-          {showFormAnimal && (
-            <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-fadeIn"
-              onClick={() => { setShowFormAnimal(false); setEditingAnimal(null) }}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="form-animal-title"
-            >
-              <div
-                className="bg-white rounded-2xl shadow-2xl border-2 border-cownect-green/30 max-w-3xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn relative"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
-                  <h3 id="form-animal-title" className="text-xl font-bold text-black">{editingAnimal ? 'Editar Animal' : 'Nuevo Animal'}</h3>
-                  <BackButton onClick={() => { setShowFormAnimal(false); setEditingAnimal(null) }} inline />
-                </div>
-                <form onSubmit={handleSubmitAnimal} className="p-6">
+      {/* Modal Tarjeta Nuevo/Editar Animal (ORIGINAL) */}
+      {showFormAnimal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 animate-fadeIn" onClick={() => setShowFormAnimal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl border-2 border-cownect-green/30 max-w-3xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn relative" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
+              <h3 className="text-xl font-bold text-black">{editingAnimal ? 'Editar Animal' : 'Nuevo Animal'}</h3>
+              <button onClick={() => setShowFormAnimal(false)} className="text-gray-400 hover:text-black font-bold">✕</button>
+            </div>
+            <form onSubmit={handleSubmitAnimal} className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-base font-bold text-black mb-2">Nombre</label>
-                  <input
-                    name="nombre"
-                    type="text"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
-                  />
+                  <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green" />
                 </div>
                 <div>
                   <label className="block text-base font-bold text-black mb-2">Arete / Número de Identificación (SINIIGA)</label>
-                  <input
-                    name="siniiga"
-                    type="text"
-                    value={formData.numero_identificacion}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        numero_identificacion: AnimalValidator.formatNumeroIdentificacionSINIIGA(e.target.value),
-                      })
-                    }
-                    placeholder="MEX-123456-12345"
-                    maxLength={16}
-                    className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green font-mono"
-                  />
+                  <input type="text" value={formData.numero_identificacion} onChange={(e) => setFormData({ ...formData, numero_identificacion: AnimalValidator.formatNumeroIdentificacionSINIIGA(e.target.value) })} placeholder="MEX-123456-12345" className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green font-mono" />
                 </div>
                 <div>
                   <label className="block text-base font-bold text-black mb-2">Especie</label>
@@ -585,13 +434,8 @@ function GestionContent() {
                 </div>
                 <div>
                   <label className="block text-base font-bold text-black mb-2">Raza</label>
-                  <select
-                    name="raza"
-                    value={formData.raza}
-                    onChange={(e) => setFormData({ ...formData, raza: e.target.value })}
-                    className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
-                  >
-                    <option value="">Seleccione una raza</option>
+                  <select value={formData.raza} onChange={(e) => setFormData({ ...formData, raza: e.target.value })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green">
+                    <option value="">Seleccione raza</option>
                     <option value="Holstein">Holstein</option>
                     <option value="Angus">Angus</option>
                     <option value="Hereford">Hereford</option>
@@ -600,371 +444,81 @@ function GestionContent() {
                 </div>
                 <div>
                   <label className="block text-base font-bold text-black mb-2">Fecha de Nacimiento</label>
-                  <input type="date" value={formData.fecha_nacimiento} onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })} max={new Date().toISOString().split('T')[0]} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green" />
+                  <input type="date" value={formData.fecha_nacimiento} onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green" />
                 </div>
                 <div>
                   <label className="block text-base font-bold text-black mb-2">Sexo</label>
-                  <select
-                    value={formData.sexo}
-                    onChange={(e) => {
-                      const newSexo = e.target.value as 'M' | 'H'
-                      const estadosDelOtro = newSexo === 'H' ? (ESTADOS_MACHO as readonly string[]) : (ESTADOS_HEMBRA as readonly string[])
-                      const estadoActualInvalido = formData.estado && estadosDelOtro.includes(formData.estado)
-                      setFormData({
-                        ...formData,
-                        sexo: newSexo,
-                        estado: estadoActualInvalido ? '' : formData.estado,
-                      })
-                    }}
-                    className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green"
-                  >
+                  <select value={formData.sexo} onChange={(e) => setFormData({ ...formData, sexo: e.target.value as any })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green">
                     <option value="M">Macho</option>
                     <option value="H">Hembra</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-base font-bold text-black mb-2">Estado / Etapa Productiva</label>
-                  <select value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green" disabled={formData.estatus !== 'Activo'}>
+                  <label className="block text-base font-bold text-black mb-2">Estado</label>
+                  <select value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green">
                     <option value="">Seleccione</option>
-                    {formData.sexo === 'H' ? (
-                      ESTADOS_HEMBRA.map((est) => <option key={est} value={est}>{est}</option>)
-                    ) : (
-                      ESTADOS_MACHO.map((est) => <option key={est} value={est}>{est}</option>)
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-base font-bold text-black mb-2">Estatus</label>
-                  <select value={formData.estatus} onChange={(e) => setFormData({ ...formData, estatus: e.target.value as 'Activo' | 'Muerto' | 'Robado' })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green">
-                    {ESTATUS_OPCIONES.map((op) => (
-                      <option key={op} value={op}>{op}</option>
-                    ))}
+                    {formData.sexo === 'H' ? ESTADOS_HEMBRA.map(e => <option key={e} value={e}>{e}</option>) : ESTADOS_MACHO.map(e => <option key={e} value={e}>{e}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-base font-bold text-black mb-2">Origen</label>
-                  <select value={formData.origen} onChange={(e) => setFormData({ ...formData, origen: e.target.value as 'cria' | 'comprado', madre_id: e.target.value === 'comprado' ? '' : formData.madre_id })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green">
-                    <option value="comprado">Comprado u otro</option>
-                    <option value="cria">Cría (nacido aquí)</option>
+                  <select value={formData.origen} onChange={(e) => setFormData({ ...formData, origen: e.target.value as any })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green">
+                    <option value="comprado">Comprado</option>
+                    <option value="cria">Cría</option>
                   </select>
                 </div>
-                {formData.origen === 'cria' && (
-                  <div className="md:col-span-2">
-                    <label className="block text-base font-bold text-black mb-2">Madre</label>
-                    <select value={formData.madre_id} onChange={(e) => setFormData({ ...formData, madre_id: e.target.value })} className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green" required={formData.origen === 'cria'}>
-                      <option value="">Seleccione la madre</option>
-                      {animales.filter((a) => a.sexo === 'H' && a.activo !== false).map((m) => (
-                        <option key={m.id} value={m.id}>{m.nombre || m.numero_identificacion || 'Sin nombre'}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div className="md:col-span-2">
-                  <label className="block text-base font-bold text-black mb-2">Observaciones</label>
-                  <div className="space-y-2">
-                    {formData.observaciones.map((obs, idx) => (
-                      <div key={idx} className="flex gap-2">
-                        <input type="text" value={obs} onChange={(e) => { const next = [...formData.observaciones]; next[idx] = e.target.value; setFormData({ ...formData, observaciones: next }) }} placeholder="Observación" className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green" />
-                        {formData.observaciones.length > 1 && (
-                          <button type="button" onClick={() => setFormData({ ...formData, observaciones: formData.observaciones.filter((_, i) => i !== idx) })} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg font-medium hover:bg-red-200">Quitar</button>
-                        )}
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => setFormData({ ...formData, observaciones: [...formData.observaciones, ''] })} className="text-cownect-green font-semibold hover:underline mt-1">
-                      + Agregar otra observación
-                    </button>
-                  </div>
-                </div>
               </div>
+
+              {/* Observaciones dinámicas */}
+              <div className="mt-4">
+                <label className="block text-base font-bold text-black mb-2">Observaciones</label>
+                {formData.observaciones.map((obs, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <input type="text" value={obs} onChange={(e) => { const next = [...formData.observaciones]; next[idx] = e.target.value; setFormData({...formData, observaciones: next}) }} className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg" />
+                    <button type="button" onClick={() => setFormData({...formData, observaciones: formData.observaciones.filter((_, i) => i !== idx)})} className="text-red-500 font-bold">✕</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setFormData({...formData, observaciones: [...formData.observaciones, '']})} className="text-cownect-green font-bold text-sm">+ Agregar Observación</button>
+              </div>
+
               {!editingAnimal && (
-                <div className="mt-6 pt-6 border-t-2 border-gray-300">
-                  <p className="font-bold text-black mb-3">Vacuna reciente (opcional)</p>
-                  <label className="flex items-center gap-2 mb-3">
-                    <input type="checkbox" checked={vacunaAlRegistrar.agregar} onChange={(e) => setVacunaAlRegistrar({ ...vacunaAlRegistrar, agregar: e.target.checked })} />
-                    <span>Agregar vacuna al registrar</span>
+                <div className="mt-6 pt-6 border-t-2 border-gray-200">
+                  <label className="flex items-center gap-2 font-bold mb-4">
+                    <input type="checkbox" checked={vacunaAlRegistrar.agregar} onChange={e => setVacunaAlRegistrar({...vacunaAlRegistrar, agregar: e.target.checked})} />
+                    ¿Registrar vacuna inicial?
                   </label>
                   {vacunaAlRegistrar.agregar && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-100 p-4 rounded-lg">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Tipo de vacuna</label>
-                        <input type="text" value={vacunaAlRegistrar.tipo_vacuna} onChange={(e) => setVacunaAlRegistrar({ ...vacunaAlRegistrar, tipo_vacuna: e.target.value })} placeholder="Ej. Brucelosis, Fiebre aftosa..." className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Fecha en que se aplicó la vacuna</label>
-                        <input
-                          type="date"
-                          value={vacunaAlRegistrar.fecha_aplicacion}
-                          onChange={(e) => setVacunaAlRegistrar({ ...vacunaAlRegistrar, fecha_aplicacion: e.target.value })}
-                          max={new Date().toISOString().split('T')[0]}
-                          min={formData.fecha_nacimiento || undefined}
-                          className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Próxima dosis (cuándo toca revacunar — opcional)</label>
-                        <input
-                          type="date"
-                          value={vacunaAlRegistrar.proxima_dosis}
-                          onChange={(e) => setVacunaAlRegistrar({ ...vacunaAlRegistrar, proxima_dosis: e.target.value })}
-                          min={vacunaAlRegistrar.fecha_aplicacion || new Date().toISOString().split('T')[0]}
-                          className="w-full max-w-xs px-4 py-2 border-2 border-gray-300 rounded-lg"
-                        />
-                      </div>
+                    <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl">
+                      <input type="text" value={vacunaAlRegistrar.tipo_vacuna} onChange={e => setVacunaAlRegistrar({...vacunaAlRegistrar, tipo_vacuna: e.target.value})} placeholder="Tipo vacuna" className="px-4 py-2 border-2 border-gray-300 rounded-lg" />
+                      <input type="date" value={vacunaAlRegistrar.fecha_aplicacion} onChange={e => setVacunaAlRegistrar({...vacunaAlRegistrar, fecha_aplicacion: e.target.value})} className="px-4 py-2 border-2 border-gray-300 rounded-lg" />
                     </div>
                   )}
                 </div>
               )}
-              <div className="mt-6 pt-6 border-t-2 border-gray-300">
-                <div className="bg-green-50 border border-green-300 rounded-lg p-4">
-                  <p className="text-green-800 font-semibold mb-2">Documentación</p>
-                  <p className="text-green-700 text-sm">La documentación se gestiona desde la sección Documentación. Use el botón en la tarjeta del animal.</p>
-                </div>
+
+              <div className="mt-8">
+                <button type="submit" className="w-full bg-cownect-green text-white py-4 rounded-xl font-bold text-xl hover:bg-opacity-90 transition-all shadow-lg">
+                  {editingAnimal ? 'Actualizar Animal' : 'Guardar Animal'}
+                </button>
               </div>
-              <button type="submit" className="mt-4 bg-cownect-green text-white px-6 py-3 rounded-lg font-bold text-lg hover:bg-opacity-90 transition-all">
-                {editingAnimal ? 'Actualizar' : 'Guardar'}
-              </button>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* Vista: lista de animales o detalle */}
-          {!selectedAnimal ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {animalesFiltrados.map((animal) => (
-                <div
-                  key={animal.id}
-                  onClick={() => setSelectedAnimal(animal)}
-                  className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200 hover:border-cownect-green hover:shadow-lg cursor-pointer transition-all"
-                >
-                  {animal.foto ? (
-                    <div className="mb-4 rounded-lg overflow-hidden border border-gray-300">
-                      <img src={getDriveImageUrl(animal.foto)} alt={animal.nombre || 'Animal'} className="w-full h-40 object-cover" onError={(e) => { const t = e.target as HTMLImageElement; if (animal.foto) t.src = animal.foto }} />
-                    </div>
-                  ) : (
-                    <div className="mb-4 h-40 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <span className="text-gray-500">Sin foto</span>
-                    </div>
-                  )}
-                  <h3 className="text-xl font-bold text-black">{animal.nombre || 'Sin nombre'}</h3>
-                  <p className="text-gray-700 font-mono font-semibold">Arete: {animal.numero_identificacion || 'N/A'}</p>
-                  <p className="text-gray-600 text-sm">{animal.especie} · {animal.raza}</p>
-                  {animal.estado && (
-                    <span className="inline-block mt-2 px-3 py-1 rounded-lg bg-green-50 border border-green-400 text-green-700 font-semibold text-sm">{animal.estado}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            /* Vista detalle: dos tarjetas */
-            <div className="space-y-6">
-              <button onClick={() => setSelectedAnimal(null)} className="text-cownect-green hover:underline font-semibold flex items-center gap-2">
-                ← Volver a la lista
-              </button>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Tarjeta izquierda: info, estadísticas, gráfica */}
-                <div className="lg:col-span-2 bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
-                  <div className="flex gap-4 mb-6">
-                    {selectedAnimal.foto ? (
-                      <div className="w-32 h-32 rounded-xl overflow-hidden flex-shrink-0 border-2 border-gray-300">
-                        <img src={getDriveImageUrl(selectedAnimal.foto)} alt={selectedAnimal.nombre || 'Animal'} className="w-full h-full object-cover" onError={(e) => { const t = e.target as HTMLImageElement; if (selectedAnimal.foto) t.src = selectedAnimal.foto }} />
-                      </div>
-                    ) : null}
-                    <div className="flex-1">
-                      <h3 className="text-2xl font-bold text-black">{selectedAnimal.nombre || 'Sin nombre'}</h3>
-                      <p className="text-lg font-mono font-semibold text-gray-700">Arete: {selectedAnimal.numero_identificacion || 'N/A'}</p>
-                      <p className="text-gray-600">{selectedAnimal.especie} · {selectedAnimal.raza}</p>
-                      <p className="text-gray-600">{selectedAnimal.sexo === 'M' ? 'Macho' : 'Hembra'} · {selectedAnimal.estado || 'N/A'}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-white rounded-lg p-4 border border-gray-200">
-                      <p className="text-sm text-gray-600">Último peso</p>
-                      <p className="text-2xl font-bold text-cownect-green">{ultimoPeso ? `${ultimoPeso.peso} kg` : '—'}</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-gray-200">
-                      <p className="text-sm text-gray-600">Vacunaciones</p>
-                      <p className="text-2xl font-bold text-blue-600">{vacunaciones.length}</p>
-                    </div>
-                  </div>
-                  <PesosChart pesos={chartData} />
-
-                  {/* Vacunas registradas */}
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <h4 className="text-lg font-bold text-black mb-3">Vacunas registradas</h4>
-                    {vacunaciones.length === 0 ? (
-                      <p className="text-gray-500 text-sm">Sin vacunaciones registradas</p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {vacunaciones.map((v) => (
-                          <li key={v.id || v.fecha_aplicacion + v.tipo_vacuna} className="bg-white rounded-lg p-3 border border-gray-200 text-sm">
-                            <span className="font-semibold text-gray-800">{v.tipo_vacuna || 'Vacuna'}</span>
-                            <span className="text-gray-600"> · {v.fecha_aplicacion || '—'}</span>
-                            {v.proxima_dosis && <span className="text-gray-500"> · Próx. dosis: {v.proxima_dosis}</span>}
-                            {v.observaciones && <p className="text-gray-600 mt-1">{v.observaciones}</p>}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                </div>
-
-                {/* Tarjeta derecha: agregar datos */}
-                <div className="bg-white/80 backdrop-blur rounded-xl p-6 border-2 border-cownect-green/50 shadow-lg">
-                  <h4 className="text-lg font-bold text-black mb-4">Agregar Datos</h4>
-                  <div className="space-y-6">
-                    <form onSubmit={handleAddPeso} className="border-b border-gray-200 pb-4">
-                      <p className="font-semibold text-gray-700 mb-2">Registrar Peso</p>
-                      <input
-                        name="peso"
-                        type="number"
-                        step="0.1"
-                        value={pesoForm.peso}
-                        onChange={(e) => setPesoForm({ ...pesoForm, peso: e.target.value })}
-                        placeholder="kg"
-                        required
-                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg mb-2"
-                      />
-                      <input type="date" value={pesoForm.fecha_registro} onChange={(e) => setPesoForm({ ...pesoForm, fecha_registro: e.target.value })} max={new Date().toISOString().split('T')[0]} className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg mb-2" />
-                      <input type="text" value={pesoForm.observaciones} onChange={(e) => setPesoForm({ ...pesoForm, observaciones: e.target.value })} placeholder="Observaciones" className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg mb-2" />
-                      <button type="submit" className="w-full bg-cownect-green text-white py-2 rounded-lg font-bold hover:bg-opacity-90">Guardar Peso</button>
-                    </form>
-                    <form onSubmit={handleAddVacuna} className="border-b border-gray-200 pb-4">
-                      <p className="font-semibold text-gray-700 mb-2">Registrar Vacunación</p>
-                      <input type="text" value={vacunaForm.tipo_vacuna} onChange={(e) => setVacunaForm({ ...vacunaForm, tipo_vacuna: e.target.value })} placeholder="Tipo de vacuna" required className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg mb-2" />
-                      <label className="block text-xs text-gray-500 mb-0.5">Fecha en que se aplicó la vacuna</label>
-                      <input
-                        type="date"
-                        value={vacunaForm.fecha_aplicacion}
-                        onChange={(e) => setVacunaForm({ ...vacunaForm, fecha_aplicacion: e.target.value })}
-                        max={new Date().toISOString().split('T')[0]}
-                        min={selectedAnimal.fecha_nacimiento || undefined}
-                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg mb-2"
-                      />
-                      <label className="block text-xs text-gray-500 mb-0.5">Próxima dosis (cuándo toca revacunar — opcional)</label>
-                      <input
-                        type="date"
-                        value={vacunaForm.proxima_dosis}
-                        onChange={(e) => setVacunaForm({ ...vacunaForm, proxima_dosis: e.target.value })}
-                        min={vacunaForm.fecha_aplicacion || new Date().toISOString().split('T')[0]}
-                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg mb-2"
-                      />
-                      <input type="text" value={vacunaForm.observaciones} onChange={(e) => setVacunaForm({ ...vacunaForm, observaciones: e.target.value })} placeholder="Observaciones de esta vacuna (opcional)" className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg mb-2" />
-                      <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700">Guardar Vacunación</button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-
-              {/* Apartado: Observaciones del animal */}
-              <div className="bg-amber-50/80 rounded-xl p-6 border-2 border-amber-200">
-                <h4 className="text-lg font-bold text-black mb-3">Observaciones del animal</h4>
-                {selectedAnimal.observaciones && selectedAnimal.observaciones.trim() ? (
-                  <ul className="space-y-1">
-                    {selectedAnimal.observaciones.split(' · ').filter(Boolean).map((obs, i) => (
-                      <li key={i} className="text-gray-700 flex items-start gap-2">
-                        <span className="text-cownect-green mt-0.5">•</span>
-                        <span>{obs.trim()}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-500 text-sm">Sin observaciones. Puedes añadirlas al editar el animal.</p>
-                )}
-              </div>
-
-              {/* Acciones del animal */}
-              <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
-                <button onClick={() => router.push(`/dashboard/eventos?id=${selectedAnimal.id}`)} className="bg-cownect-dark-green text-white px-4 py-2 rounded-lg font-bold hover:bg-opacity-90">Historial de eventos</button>
-                {selectedAnimal.sexo === 'H' && (
-                  <button onClick={() => router.push(`/dashboard/fertilidad?id=${selectedAnimal.id}`)} className="bg-rose-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-rose-700">Fertilidad y ciclo reproductivo</button>
-                )}
-                <button onClick={() => router.push(`/dashboard/documentacion?id=${selectedAnimal.id}`)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700">Documentación</button>
-                {puedeEditar && (
-                  <button onClick={() => { setAnimalToDelete(selectedAnimal); setShowDeleteModal(true) }} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700">Marcar Inactivo</button>
-                )}
-                {puedeEditar && selectedAnimal.sexo === 'H' && (selectedAnimal.estado === 'Vaca Ordeña' || selectedAnimal.estado === 'Vaca Seca') && (
-                  <>
-                    <button onClick={() => handleCambiarEstado(selectedAnimal, 'Vaca Ordeña')} className={`px-4 py-2 rounded-lg font-bold ${selectedAnimal.estado === 'Vaca Ordeña' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700'}`}>Ordeña</button>
-                    <button onClick={() => handleCambiarEstado(selectedAnimal, 'Vaca Seca')} className={`px-4 py-2 rounded-lg font-bold ${selectedAnimal.estado === 'Vaca Seca' ? 'bg-yellow-600 text-white' : 'bg-yellow-100 text-yellow-700'}`}>Seca</button>
-                  </>
-                )}
-              </div>
-
-              {/* Botón al final: modificar datos */}
-              {puedeEditar && (
-                <div className="pt-4 border-t border-gray-200">
-                  <button onClick={() => handleEdit(selectedAnimal)} className="w-full sm:w-auto bg-gray-700 text-white px-6 py-3 rounded-lg font-bold hover:bg-gray-800 transition-all">
-                    Modificar datos del animal (nombre, raza, arete, etc.)
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {animales.length === 0 && !loading && <div className="text-center py-8 text-xl text-gray-700">No hay animales registrados</div>}
-          {animales.length > 0 && animalesFiltrados.length === 0 && <div className="text-center py-8 text-xl text-gray-700">No se encontraron animales con ese arete</div>}
-        </div>
-      </div>
-
-      {/* Modal Eliminar/Inactivo */}
-      {showDeleteModal && animalToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <BackButton onClick={() => { setShowDeleteModal(false); setAnimalToDelete(null) }} inline />
-              <h3 className="text-xl font-bold">Marcar como Inactivo</h3>
-            </div>
-            <p className="mb-4"><strong>{animalToDelete.nombre || animalToDelete.numero_identificacion}</strong></p>
-            <textarea value={razonEliminacion} onChange={(e) => setRazonEliminacion(e.target.value)} placeholder="Razón (opcional)" className="w-full px-4 py-3 border-2 border-gray-400 rounded-lg mb-4" rows={3} />
-            <div className="flex gap-3">
-              <button onClick={confirmDelete} className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold">Confirmar</button>
-              <button onClick={() => { setShowDeleteModal(false); setAnimalToDelete(null) }} className="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold">Cancelar</button>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Modal Estado Muerto/Robado */}
-      {showEstadoModal && animalEstadoCambiar && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <BackButton onClick={() => { setShowEstadoModal(false); setAnimalEstadoCambiar(null); setNuevoEstado(''); setRazonEstado('') }} inline />
-              <h3 className="text-xl font-bold">Marcar como {nuevoEstado}</h3>
-            </div>
-            <p className="mb-4"><strong>{animalEstadoCambiar.nombre || animalEstadoCambiar.numero_identificacion}</strong></p>
-            <textarea value={razonEstado} onChange={(e) => setRazonEstado(e.target.value)} placeholder="Razón (opcional)" className="w-full px-4 py-3 border-2 border-gray-400 rounded-lg mb-4" rows={3} />
-            <div className="flex gap-3">
-              <button onClick={confirmarCambioEstado} className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold">Confirmar</button>
-              <button onClick={() => { setShowEstadoModal(false); setAnimalEstadoCambiar(null); setNuevoEstado(''); setRazonEstado('') }} className="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold">Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Éxito */}
+      {/* Alertas */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-cownect-green mb-4">Éxito</h3>
-            <p className="mb-6">{successMessage}</p>
-            <button onClick={() => { setShowSuccessModal(false); setSuccessMessage('') }} className="w-full bg-cownect-green text-white py-3 rounded-lg font-bold">Aceptar</button>
-          </div>
+        <div className="fixed bottom-8 right-8 bg-cownect-green text-white px-8 py-4 rounded-xl shadow-2xl z-[10000] animate-slideIn">
+          <p className="font-bold">{successMessage}</p>
         </div>
       )}
 
-      {/* Modal Error */}
       {showErrorModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
             <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
-            <p className="mb-6">{errorMessage}</p>
-            <div className="flex gap-3">
-              <button onClick={() => { setShowErrorModal(false); setErrorMessage(''); setIsLimitError(false) }} className="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold">Cerrar</button>
-              {isLimitError && <button onClick={() => { router.push('/choose-plan'); setShowErrorModal(false); setErrorMessage(''); setIsLimitError(false) }} className="flex-1 bg-cownect-green text-white py-3 rounded-lg font-bold">Ver Planes</button>}
-            </div>
+            <p className="text-gray-600 mb-6">{errorMessage}</p>
+            <button onClick={() => setShowErrorModal(false)} className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold">Entendido</button>
           </div>
         </div>
       )}

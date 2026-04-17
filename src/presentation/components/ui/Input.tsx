@@ -6,6 +6,7 @@ interface InputProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   required?: boolean
   placeholder?: string
+  autoFocus?: boolean
 }
 
 export default function Input({
@@ -15,7 +16,8 @@ export default function Input({
   value,
   onChange,
   required = false,
-  placeholder
+  placeholder,
+  autoFocus = false,
 }: InputProps) {
   return (
     <div>
@@ -30,6 +32,7 @@ export default function Input({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
+        autoFocus={autoFocus}
         className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-cownect-green transition-colors duration-200 bg-white text-black"
       />
     </div>

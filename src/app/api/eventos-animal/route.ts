@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getFirebaseAdminDb, hasAdminCredentials } from '@/infrastructure/config/firebaseAdmin'
 import { EventoTemporalValidator } from '@/domain/validators/EventoTemporalValidator'
 import { FirebaseAdminEventoAnimalRepository } from '@/infrastructure/repositories/FirebaseAdminEventoAnimalRepository'
-import { TIPOS_EVENTO, MOTIVOS_POR_TIPO, type TipoEvento } from '@/domain/entities/EventoAnimal'
+import { TIPOS_EVENTO, MOTIVOS_POR_TIPO, type TipoEvento, type EventoAnimal } from '@/domain/entities/EventoAnimal'
+import { crearExamenOvarico, type ExamenOvarico } from '@/domain/value-objects/ExamenOvarico'
 
 type Body = {
   userId: string
@@ -14,7 +15,11 @@ type Body = {
   madre_id?: string
   cria_id?: string
   signos_celo?: string
-  examen_ovarico?: { conteo_folicular: number; cuerpo_luteo_presente: boolean; metodo: string }
+  examen_ovarico?: { 
+    conteo_folicular: number
+    cuerpo_luteo_presente: boolean
+    metodo: 'palpacion' | 'ultrasonido'
+  }
   tipo_servicio?: 'INSEMINACION' | 'MONTA_NATURAL'
   toro_id?: string
   pajilla_id?: string
@@ -126,7 +131,22 @@ export async function POST(request: NextRequest) {
     const repo = new FirebaseAdminEventoAnimalRepository()
     const eventosExistentes = await repo.getByAnimalId(animal_id, userId.trim(), 'asc')
 
-    const nuevoEvento = {
+    // Validar y crear examen_ovarico si está presente
+    let examen_ovarico_valido: ExamenOvarico | undefined = undefined
+    if (examen_ovarico) {
+      try {
+        examen_ovarico_valido = crearExamenOvarico(
+          examen_ovarico.conteo_folicular,
+          examen_ovarico.cuerpo_luteo_presente,
+          examen_ovarico.metodo
+        )
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Error validando examen_ovarico'
+        return NextResponse.json({ error: msg }, { status: 400 })
+      }
+    }
+
+    const nuevoEvento: EventoAnimal = {
       animal_id: animal_id.trim(),
       tipo_evento,
       fecha_evento: fecha_evento.trim(),
@@ -136,7 +156,7 @@ export async function POST(request: NextRequest) {
       madre_id,
       cria_id,
       signos_celo,
-      examen_ovarico,
+      examen_ovarico: examen_ovarico_valido,
       tipo_servicio,
       toro_id,
       pajilla_id,

@@ -1,6 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function isAdmin() {
       return request.auth != null && request.auth.token.email == 'mufasaelrey13@gmail.com';
     }
@@ -13,9 +14,34 @@ service cloud.firestore {
       return request.auth.token.owner_uid;
     }
 
+    function tienePerfilUsuario() {
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function perfilAuth() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    /** Empleado con id_rancho_jefe apuntando al dueño del recurso. */
+    function esEmpleadoDelUsuario(userIdPropietario) {
+      return request.auth != null
+        && tienePerfilUsuario()
+        && perfilAuth().id_rancho_jefe == userIdPropietario;
+    }
+
+    /** Dueño del rancho, empleado vinculado, o sesión trabajador (custom token) del dueño. */
+    function puedeLeerRecursoDe(uidDueño) {
+      return request.auth != null && (
+        uidDueño == request.auth.uid ||
+        esEmpleadoDelUsuario(uidDueño) ||
+        (isTrabajadorSesion() && ownerUidTrabajador() == uidDueño)
+      );
+    }
+
     match /usuarios/{userId} {
       allow read: if request.auth != null && (
         request.auth.uid == userId ||
+        esEmpleadoDelUsuario(userId) ||
         (isTrabajadorSesion() && ownerUidTrabajador() == userId)
       );
       allow write: if request.auth != null && request.auth.uid == userId && !isTrabajadorSesion();
@@ -33,51 +59,43 @@ service cloud.firestore {
     }
 
     match /animales/{animalId} {
-      allow read: if request.auth != null && (
-        resource.data.usuario_id == request.auth.uid ||
-        (isTrabajadorSesion() && resource.data.usuario_id == ownerUidTrabajador())
-      );
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
       allow create: if request.auth != null && (
         (!isTrabajadorSesion() && request.resource.data.usuario_id == request.auth.uid) ||
-        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador())
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
       );
       allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
         (resource.data.usuario_id == request.auth.uid || isAdmin());
     }
 
     match /eventos_animal/{eventoId} {
-      allow read: if request.auth != null && (
-        resource.data.usuario_id == request.auth.uid ||
-        (isTrabajadorSesion() && resource.data.usuario_id == ownerUidTrabajador())
-      );
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
       allow create: if request.auth != null && (
         request.resource.data.usuario_id == request.auth.uid ||
-        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador())
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
       );
       allow update, delete: if false;
     }
 
     match /pesos/{docId} {
-      allow read: if request.auth != null && (
-        resource.data.usuario_id == request.auth.uid ||
-        (isTrabajadorSesion() && resource.data.usuario_id == ownerUidTrabajador())
-      );
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
       allow create: if request.auth != null && (
         request.resource.data.usuario_id == request.auth.uid ||
-        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador())
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
       );
       allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
         (resource.data.usuario_id == request.auth.uid || isAdmin());
     }
 
     match /vacunaciones/{docId} {
-      allow read: if request.auth != null && (
-        resource.data.usuario_id == request.auth.uid ||
-        (isTrabajadorSesion() && resource.data.usuario_id == ownerUidTrabajador())
-      );
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
       allow create: if request.auth != null && (
         request.resource.data.usuario_id == request.auth.uid ||
-        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador())
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
       );
       allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
         (resource.data.usuario_id == request.auth.uid || isAdmin());
@@ -98,6 +116,50 @@ service cloud.firestore {
       allow create: if request.auth != null && !isTrabajadorSesion() &&
         (request.resource.data.usuario_id == request.auth.uid || isAdmin());
       allow update, delete: if false;
+    }
+
+    match /ranchos/{docId} {
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
+      allow create: if request.auth != null && request.resource.data.usuario_id == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.usuario_id == request.auth.uid;
+    }
+
+    match /produccion/{docId} {
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
+      );
+      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
+        resource.data.usuario_id == request.auth.uid;
+    }
+
+    match /registro_clinico/{docId} {
+      allow read: if puedeLeerRecursoDe(resource.data.usuario_id);
+      allow create: if request.auth != null && (
+        request.resource.data.usuario_id == request.auth.uid ||
+        (isTrabajadorSesion() && request.resource.data.usuario_id == ownerUidTrabajador()) ||
+        (tienePerfilUsuario() && perfilAuth().id_rancho_jefe == request.resource.data.usuario_id)
+      );
+      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
+        resource.data.usuario_id == request.auth.uid;
+    }
+
+    match /tareas/{docId} {
+      allow read: if request.auth != null && (
+        puedeLeerRecursoDe(resource.data.usuario_id) ||
+        resource.data.asignado_a == request.auth.uid
+      );
+      allow create: if request.auth != null && request.resource.data.usuario_id == request.auth.uid;
+      allow update, delete: if request.auth != null && !isTrabajadorSesion() &&
+        (resource.data.usuario_id == request.auth.uid || resource.data.asignado_a == request.auth.uid);
+    }
+
+    match /notificaciones/{docId} {
+      allow read: if request.auth != null && resource.data.usuario_id == request.auth.uid;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && resource.data.usuario_id == request.auth.uid;
     }
   }
 }
