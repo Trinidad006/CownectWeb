@@ -3,6 +3,7 @@ import { FirebaseRanchoRepository } from '@/infrastructure/repositories/Firebase
 import { FirebaseAnimalRepository } from '@/infrastructure/repositories/FirebaseAnimalRepository'
 import { VerificarCertificadoCownectUseCase } from '@/domain/use-cases/certificado/VerificarCertificadoCownectUseCase'
 import { PremiumAPIMiddleware } from '@/infrastructure/utils/PremiumAPIMiddleware'
+import { CertificadoCownectService } from '@/domain/services/CertificadoCownectService'
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +30,28 @@ export async function POST(request: NextRequest) {
     const useCase = new VerificarCertificadoCownectUseCase()
 
     const resultado = await useCase.execute(rancho, animales)
-    return NextResponse.json({ certificado: resultado }, { status: 200 })
+    const MIN = CertificadoCownectService.MINIMO_VACAS_CERTIFICADO
+    const hembrasActivas = animales.filter((a) => a.activo !== false && a.sexo === 'H').length
+    const puntuacion = resultado.elegible
+      ? 100
+      : Math.min(99, Math.round((hembrasActivas / Math.max(MIN, 1)) * 100))
+
+    const certificado = {
+      elegible: resultado.elegible,
+      puntuacion,
+      criterios: [
+        {
+          nombre: 'Umbral de hembras activas',
+          cumplido: hembrasActivas >= MIN,
+          descripcion: `Se requieren al menos ${MIN} hembras activas. Actualmente: ${hembrasActivas}.`,
+        },
+      ],
+      recomendaciones: resultado.elegible
+        ? []
+        : [resultado.motivo || resultado.mensaje].filter(Boolean),
+    }
+
+    return NextResponse.json({ certificado }, { status: 200 })
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Error verificando certificado' }, { status: 500 })
   }

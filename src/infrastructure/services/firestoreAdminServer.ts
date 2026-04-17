@@ -8,6 +8,8 @@ import { getFirebaseAdminDb, hasAdminCredentials } from '@/infrastructure/config
 const ANIMALES = 'animales'
 const USUARIOS = 'usuarios'
 const ANIMAL_CERTIFICATES = 'animal_certificates'
+const LOTES_CERTIFICADO = 'lotes_certificado'
+const LOTE_CERTIFICATES = 'lote_certificates'
 const COUNTERS = 'counters'
 const PESOS = 'pesos'
 const VACUNACIONES = 'vacunaciones'
@@ -205,5 +207,104 @@ export const firestoreAdminServer = {
       .collection(TRABAJADORES_SUB)
       .doc(workerId)
       .update({ activo, updated_at: new Date().toISOString() })
+  },
+
+  /** Lotes de animales agrupados para certificación Cownect (dueño). */
+  async createLoteCertificado(
+    usuarioId: string,
+    params: { nombre: string; rancho_id?: string | null; animal_ids: string[] }
+  ): Promise<string> {
+    const db = requireAdminDb()
+    const now = new Date().toISOString()
+    const ref = db.collection(LOTES_CERTIFICADO).doc()
+    await ref.set({
+      usuario_id: usuarioId,
+      rancho_id: params.rancho_id ?? null,
+      nombre: params.nombre.trim(),
+      animal_ids: params.animal_ids,
+      created_at: now,
+      updated_at: now,
+    })
+    return ref.id
+  },
+
+  async updateLoteCertificado(loteId: string, data: Record<string, unknown>) {
+    const db = requireAdminDb()
+    const cleaned = Object.fromEntries(
+      Object.entries({ ...data, updated_at: new Date().toISOString() }).filter(([, v]) => v !== undefined)
+    )
+    await db.collection(LOTES_CERTIFICADO).doc(loteId).update(cleaned)
+  },
+
+  async getLoteCertificado(loteId: string) {
+    const db = requireAdminDb()
+    const snap = await db.collection(LOTES_CERTIFICADO).doc(loteId).get()
+    return snap.exists ? { id: snap.id, ...snap.data() } : null
+  },
+
+  async listLotesCertificadoByUsuario(usuarioId: string) {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(LOTES_CERTIFICADO).where('usuario_id', '==', usuarioId).get()
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
+    list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    return list
+  },
+
+  async addLoteCertificate(params: {
+    loteId: string
+    usuarioId: string
+    ownerWallet: string | null
+    certificateIdOnchain: string
+    metadataUri: string
+    txHash?: string | null
+  }) {
+    const db = requireAdminDb()
+    const now = new Date().toISOString()
+    const ref = db.collection(LOTE_CERTIFICATES).doc()
+    const counterRef = db.collection(COUNTERS).doc(LOTE_CERTIFICATES)
+
+    let cownectCertificateId = 0
+    await db.runTransaction(async (tx) => {
+      const counterSnap = await tx.get(counterRef)
+      const prev = counterSnap.exists ? Number(counterSnap.data()?.last_value || 0) : 0
+      cownectCertificateId = prev + 1
+
+      tx.set(
+        counterRef,
+        { last_value: cownectCertificateId, updated_at: now },
+        { merge: true }
+      )
+
+      const raw = {
+        lote_id: params.loteId,
+        usuario_id: params.usuarioId,
+        owner_wallet: params.ownerWallet,
+        certificate_id_onchain: params.certificateIdOnchain,
+        cownect_certificate_id: cownectCertificateId,
+        metadata_uri: params.metadataUri,
+        tx_hash: params.txHash ?? null,
+        created_at: now,
+      }
+      const payload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined))
+      tx.set(ref, payload)
+    })
+
+    return { id: ref.id, cownectCertificateId }
+  },
+
+  async getLoteCertificates(loteId: string) {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(LOTE_CERTIFICATES).where('lote_id', '==', loteId).get()
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
+    list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    return list
+  },
+
+  async findLoteCertificateByTxHash(txHash: string) {
+    const db = requireAdminDb()
+    const snapshot = await db.collection(LOTE_CERTIFICATES).where('tx_hash', '==', txHash).limit(1).get()
+    if (snapshot.empty) return null
+    const doc = snapshot.docs[0]
+    return { id: doc.id, ...doc.data() }
   },
 }
